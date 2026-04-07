@@ -32,8 +32,8 @@ export interface TableState {
 }
 
 export const RFI_POSITIONS: Position[] = ['UTG', 'CO', 'BTN', 'SB'];
-// Adjusted thresholds: UTG opens top 15%, CO top 25%, BTN top 45%
-export const RFI_THRESHOLDS: Record<Position, number> = { UTG: 15, CO: 25, BTN: 45, SB: 40, BB: 0 };
+// Adjusted thresholds: UTG opens top 20%, CO top 30%, BTN top 50%
+export const RFI_THRESHOLDS: Record<Position, number> = { UTG: 20, CO: 30, BTN: 50, SB: 45, BB: 0 };
 
 const RANK_VALUES: Record<string, number> = {
   '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
