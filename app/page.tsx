@@ -262,7 +262,7 @@ function TrainerView({
 }
 
 // ═══════════════════════════════════════════════════════════
-// Single Poker Table (CoinPoker Layout with Blinds)
+// Single Poker Table (CoinPoker Responsive Layout)
 // ═══════════════════════════════════════════════════════════
 
 function PokerTable({ table, isActive, isPaused, onDecision }: any) {
@@ -270,92 +270,90 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
   const CLOCKWISE_POSITIONS = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
   const heroIdx = CLOCKWISE_POSITIONS.indexOf(table.position);
   
-  // Opponents on the felt
-  // chipStyle dynamically pushes the chip onto the green felt depending on their seat
+  // Responsive seating
   const opponentSeats = [
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 1) % 5], style: "bottom-[20%] left-[2%]", chipStyle: "-top-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 2) % 5], style: "top-[15%] left-[15%]", chipStyle: "-bottom-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 3) % 5], style: "top-[15%] right-[15%]", chipStyle: "-bottom-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[20%] right-[2%]", chipStyle: "-top-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 1) % 5], style: "bottom-[12%] sm:bottom-[20%] left-[2%]", chipStyle: "-top-6 sm:-top-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 2) % 5], style: "top-[8%] sm:top-[15%] left-[8%] sm:left-[15%]", chipStyle: "-bottom-6 sm:-bottom-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 3) % 5], style: "top-[8%] sm:top-[15%] right-[8%] sm:right-[15%]", chipStyle: "-bottom-6 sm:-bottom-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[12%] sm:bottom-[20%] right-[2%]", chipStyle: "-top-6 sm:-top-8 left-1/2 -translate-x-1/2" },
   ];
 
-  // Helper to render the posted chip for a given position
+  // Render Posted Blinds
   const renderPostedChip = (pos: string) => {
     if (pos !== 'SB' && pos !== 'BB') return null;
     const amount = pos === 'SB' ? '0.5' : '1';
     return (
-      <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 py-0.5 rounded-full z-20 shadow-lg">
-        <div className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-red-700 border border-red-300/50 shadow-sm"></div>
-        <span className="text-[10px] text-white font-bold">{amount}</span>
+      <div className="flex items-center gap-1 sm:gap-1.5 bg-black/60 border border-white/10 px-1.5 sm:px-2 py-0.5 rounded-full z-20 shadow-lg">
+        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-gradient-to-br from-red-400 to-red-700 border border-red-300/50 shadow-sm"></div>
+        <span className="text-[8px] sm:text-[10px] text-white font-bold">{amount}</span>
       </div>
     );
   };
 
-  // Calculate where the Floating Dealer Button should be on the felt
-  let dealerStyle = "bottom-[25%] right-[35%]"; // Default Hero location
-  if (opponentSeats[0].pos === 'BTN') dealerStyle = "bottom-[25%] left-[18%]";
-  else if (opponentSeats[1].pos === 'BTN') dealerStyle = "top-[25%] left-[28%]";
-  else if (opponentSeats[2].pos === 'BTN') dealerStyle = "top-[25%] right-[28%]";
-  else if (opponentSeats[3].pos === 'BTN') dealerStyle = "bottom-[25%] right-[18%]";
+  // Dealer Button Position Logic
+  let dealerStyle = "bottom-[22%] sm:bottom-[25%] right-[28%] sm:right-[35%]";
+  if (opponentSeats[0].pos === 'BTN') dealerStyle = "bottom-[22%] sm:bottom-[25%] left-[12%] sm:left-[18%]";
+  else if (opponentSeats[1].pos === 'BTN') dealerStyle = "top-[22%] sm:top-[25%] left-[22%] sm:left-[28%]";
+  else if (opponentSeats[2].pos === 'BTN') dealerStyle = "top-[22%] sm:top-[25%] right-[22%] sm:right-[28%]";
+  else if (opponentSeats[3].pos === 'BTN') dealerStyle = "bottom-[22%] sm:bottom-[25%] right-[12%] sm:right-[18%]";
 
   return (
     <div className="flex flex-col items-center w-full max-w-[850px] relative">
       
       {/* 1. THE BACKGROUND TABLE FELT */}
-      <div className={`relative w-full aspect-[2.2/1] min-h-[220px] rounded-[300px] p-2 sm:p-4 transition-all ${isActive ? '' : 'opacity-50 grayscale'}`}
+      <div className={`relative w-full aspect-[1.5/1] sm:aspect-[2.2/1] min-h-[220px] rounded-[300px] p-2 sm:p-4 transition-all ${isActive ? '' : 'opacity-50 grayscale'}`}
            style={{ background: 'linear-gradient(to bottom, #1f2937, #111827)', boxShadow: 'inset 0 4px 10px rgba(255,255,255,0.05), 0 20px 40px rgba(0,0,0,0.8)' }}>
         
         <div className="relative w-full h-full rounded-[250px] flex items-center justify-center border-4 border-zinc-800/80 overflow-hidden"
              style={{ background: 'radial-gradient(ellipse at center, #0f766e 0%, #064e3b 100%)', boxShadow: 'inset 0 10px 40px rgba(0,0,0,0.7)' }}>
           
           {/* Floating Dealer Button */}
-          <div className={`absolute ${dealerStyle} z-20 w-7 h-7 bg-gradient-to-b from-red-500 to-red-700 rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.6)] border border-red-300/50 transition-all duration-500`}>
-             <span className="text-white font-black text-[10px] drop-shadow-md">D</span>
+          <div className={`absolute ${dealerStyle} z-20 w-5 h-5 sm:w-7 sm:h-7 bg-gradient-to-b from-red-500 to-red-700 rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.6)] border border-red-300/50 transition-all duration-500`}>
+             <span className="text-white font-black text-[8px] sm:text-[10px] drop-shadow-md">D</span>
           </div>
 
-          {/* Hero's Posted Chip (if Hero is SB or BB) */}
+          {/* Hero Posted Chips */}
           {(table.position === 'SB' || table.position === 'BB') && (
-            <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 z-20">
+            <div className="absolute bottom-[10%] sm:bottom-[12%] left-1/2 -translate-x-1/2 z-20">
               {renderPostedChip(table.position)}
             </div>
           )}
 
-          {/* Opponent Nameplates and their Posted Chips */}
+          {/* Opponent Seats & Chips */}
           {opponentSeats.map((seat, i) => (
             <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center`}>
-              {/* Opponent Posted Chip */}
               {(seat.pos === 'SB' || seat.pos === 'BB') && (
                 <div className={`absolute ${seat.chipStyle}`}>
                   {renderPostedChip(seat.pos)}
                 </div>
               )}
               
-              <div className="flex -mb-4 opacity-80 scale-75">
+              <div className="flex -mb-2 sm:-mb-4 opacity-80 scale-50 sm:scale-75">
                  {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
               </div>
-              <div className="relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-6 py-1 text-center shadow-xl z-20">
-                <span className="text-xs font-medium text-zinc-100">{seat.pos}</span>
+              <div className="relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 sm:px-6 py-0.5 sm:py-1 text-center shadow-xl z-20">
+                <span className="text-[9px] sm:text-xs font-medium text-zinc-100">{seat.pos}</span>
               </div>
             </div>
           ))}
 
-          {/* Center Pot (Now correctly showing 1.5 for the blinds) */}
-          <div className="absolute top-[35%] bg-blue-900/40 text-blue-300 text-xs font-bold px-4 py-1 rounded-full border border-blue-500/30 shadow-inner">
+          {/* Pot Display */}
+          <div className="absolute top-[35%] bg-blue-900/40 text-blue-300 text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-0.5 sm:py-1 rounded-full border border-blue-500/30 shadow-inner">
             Pot 1.5
           </div>
 
           {/* Feedback Overlay */}
           {table.showFeedback && table.percentile !== null && (
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-6 rounded-2xl backdrop-blur-md border shadow-2xl animate-in fade-in zoom-in duration-200 ${
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-4 sm:p-6 rounded-2xl backdrop-blur-md border shadow-2xl animate-in fade-in zoom-in duration-200 ${
               table.playerAction === table.correctAction ? 'bg-emerald-950/95 border-green-500/50' : 'bg-rose-950/95 border-red-500/50'
             }`}>
-              <div className="flex items-center gap-3 mb-2">
-                {table.playerAction === table.correctAction ? <CheckCircle2 className="w-7 h-7 text-green-500" /> : <XCircle className="w-7 h-7 text-red-500" />}
-                <span className={`font-black text-xl uppercase tracking-widest ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                {table.playerAction === table.correctAction ? <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7 text-green-500" /> : <XCircle className="w-5 h-5 sm:w-7 sm:h-7 text-red-500" />}
+                <span className={`font-black text-sm sm:text-xl uppercase tracking-widest ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
                   {table.playerAction === table.correctAction ? 'Perfect' : 'Mistake'}
                 </span>
               </div>
-              <div className="text-xs text-zinc-200 flex flex-col gap-1 items-center bg-black/50 px-4 py-2 rounded-lg border border-white/10 w-full text-center">
+              <div className="text-[10px] sm:text-xs text-zinc-200 flex flex-col gap-1 items-center bg-black/50 px-3 sm:px-4 py-1 sm:py-2 rounded-lg border border-white/10 w-full text-center">
                 <div className="flex justify-between w-full border-b border-white/10 pb-1">
                    <span className="opacity-70">Solver Top:</span>
                    <span className="font-mono font-bold">{table.percentile.toFixed(1)}%</span>
@@ -370,10 +368,9 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
         </div>
       </div>
 
-      {/* 2. THE HERO AREA (THE COINPOKER FAN) */}
-      <div className="relative z-30 -mt-12 sm:-mt-16 flex flex-col items-center w-full max-w-[600px]">
+      {/* 2. THE HERO AREA */}
+      <div className="relative z-30 -mt-8 sm:-mt-16 flex flex-col items-center w-full max-w-[600px] scale-[0.85] sm:scale-100 origin-top">
         
-        {/* The Fanned Cards */}
         <div className="flex justify-center items-end h-[120px] sm:h-[150px] w-full">
           {isPaused ? (
             table.hand.map((card: CardType, i: number) => {
@@ -410,21 +407,20 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
           )}
         </div>
 
-        {/* Hero Nameplate under cards */}
-        <div className="relative z-40 mt-[-10px] bg-zinc-900 border-t border-zinc-600 rounded-md px-10 py-1 shadow-[0_10px_20px_rgba(0,0,0,0.8)] flex flex-col items-center">
-          <span className="text-zinc-200 text-sm font-medium">{table.position}</span>
-          <span className="text-yellow-500 font-bold text-sm tracking-wide">HERO</span>
+        <div className="relative z-40 mt-[-5px] sm:mt-[-10px] bg-zinc-900 border-t border-zinc-600 rounded-md px-6 sm:px-10 py-1 shadow-[0_10px_20px_rgba(0,0,0,0.8)] flex flex-col items-center">
+          <span className="text-zinc-200 text-xs sm:text-sm font-medium">{table.position}</span>
+          <span className="text-yellow-500 font-bold text-xs sm:text-sm tracking-wide">HERO</span>
         </div>
       </div>
 
       {/* 3. THE ACTION BUTTONS */}
-      <div className={`mt-6 w-full max-w-[450px] flex gap-3 transition-all duration-300 ${canAct ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+      <div className={`mt-2 sm:mt-6 w-full max-w-[450px] flex gap-2 sm:gap-3 px-2 sm:px-0 transition-all duration-300 ${canAct ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
         <button onClick={(e) => { e.stopPropagation(); onDecision('fold'); }}
-          className="flex-1 py-3 rounded-lg bg-gradient-to-b from-rose-500 to-rose-700 border border-rose-800 shadow-[0_4px_0_rgb(136,19,55)] hover:from-rose-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-lg tracking-wide">
+          className="flex-1 py-2.5 sm:py-3 rounded-lg bg-gradient-to-b from-rose-500 to-rose-700 border border-rose-800 shadow-[0_4px_0_rgb(136,19,55)] hover:from-rose-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-base sm:text-lg tracking-wide">
           Fold
         </button>
         <button onClick={(e) => { e.stopPropagation(); onDecision('raise'); }}
-          className="flex-1 py-3 rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-700 border border-emerald-800 shadow-[0_4px_0_rgb(6,95,70)] hover:from-emerald-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-lg tracking-wide">
+          className="flex-1 py-2.5 sm:py-3 rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-700 border border-emerald-800 shadow-[0_4px_0_rgb(6,95,70)] hover:from-emerald-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-base sm:text-lg tracking-wide">
           Raise
         </button>
       </div>
