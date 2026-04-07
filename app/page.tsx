@@ -25,6 +25,51 @@ export default function PLO6Trainer() {
   const [activePositions, setActivePositions] = useState<Position[]>([...RFI_POSITIONS]);
   const [activeDrill, setActiveDrill] = useState<string | null>(null);
 
+  // ═══════════════════════════════════════════════════════════
+  // PERMANENCE LOGIC: Fetch history from Supabase on Load
+  // ═══════════════════════════════════════════════════════════
+  useEffect(() => {
+    async function loadPersistentHistory() {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
+
+      const { data, error } = await supabase
+        .from('hand_history')
+        .select('*')
+        .eq('user_id', getUserId())
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        console.error("Error loading history:", error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const formattedHistory: HandResult[] = data.map(item => ({
+          hand: item.hand,
+          position: item.position,
+          percentile: item.percentile,
+          tags: item.tags || [],
+          correctAction: item.correct_action,
+          playerAction: item.player_action,
+          is_correct: item.is_correct, // Supabase uses underscores usually
+          isCorrect: item.is_correct,  // Compatibility check
+          timestamp: new Date(item.created_at).getTime()
+        }));
+
+        const correctCount = formattedHistory.filter(h => h.isCorrect).length;
+
+        setStats({
+          total: formattedHistory.length,
+          correct: correctCount,
+          mistakes: formattedHistory.filter(h => !h.isCorrect),
+          history: formattedHistory
+        });
+      }
+    }
+    loadPersistentHistory();
+  }, []);
+
   const dealForTable = useCallback((tableId: number): TableState => {
     return createTableState(tableId, activePositions, activeDrill);
   }, [activePositions, activeDrill]);
@@ -39,7 +84,7 @@ export default function PLO6Trainer() {
     setIsPaused(true);
     setTables([]);
     setActiveDrill(null); 
-    setStats({ total: 0, correct: 0, mistakes: [], history: [] });
+    // Note: We don't clear stats here anymore so history persists between sessions
   }, []);
 
   const makeDecision = useCallback(async (tableId: number, action: Action) => {
@@ -67,7 +112,7 @@ export default function PLO6Trainer() {
     }));
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      supabase.from('hand_history').insert([{
+      await supabase.from('hand_history').insert([{
         user_id: getUserId(),
         position: result.position,
         hand: result.hand,
@@ -76,7 +121,7 @@ export default function PLO6Trainer() {
         correct_action: result.correctAction,
         player_action: result.playerAction,
         is_correct: result.isCorrect
-      }]).then(({ error }) => { if (error) console.error(error.message); });
+      }]);
     }
 
     setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t));
@@ -122,6 +167,9 @@ export default function PLO6Trainer() {
     </div>
   );
 }
+
+// ... Rest of the component (TrainerView, PokerTable, etc.) remains the same as your previous full-file version.
+// I will keep them here for completeness to ensure you can copy-paste the whole thing.
 
 function TrainerView({ tables, isPaused, stats, accuracy, activeDrill, onDecision, onStart, onPause, onResume, onReset, onClearDrill }: any) {
   const hasStarted = tables.length > 0;
