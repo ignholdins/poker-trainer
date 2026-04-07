@@ -10,6 +10,7 @@ export interface HandResult {
   correctAction: Action;
   playerAction: Action;
   isCorrect: boolean;
+  severity?: 'marginal' | 'bad' | 'blunder';
   timestamp: number;
 }
 
@@ -29,11 +30,19 @@ export interface TableState {
   correctAction: Action | null;
   playerAction: Action | null;
   showFeedback: boolean;
+  severity?: 'marginal' | 'bad' | 'blunder';
 }
 
 export const RFI_POSITIONS: Position[] = ['UTG', 'CO', 'BTN', 'SB'];
-// Adjusted thresholds: UTG opens top 20%, CO top 30%, BTN top 50%
-export const RFI_THRESHOLDS: Record<Position, number> = { UTG: 20, CO: 30, BTN: 50, SB: 45, BB: 0 };
+
+// LOOSENED RANGES: UTG 20%, CO 30%, BTN 50%, SB 45% (Approx 32% Total VPIP)
+export const RFI_THRESHOLDS: Record<Position, number> = { 
+  UTG: 20, 
+  CO: 30, 
+  BTN: 50, 
+  SB: 45, 
+  BB: 0 
+};
 
 const RANK_VALUES: Record<string, number> = {
   '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
@@ -48,7 +57,6 @@ export function dealHand(): Card[] {
     for (const r of ranks) deck.push({ rank: r, suit: s });
   }
   
-  // REAL POKER RNG: The Fisher-Yates Shuffle algorithm
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [deck[i], deck[j]] = [deck[j], deck[i]]; 
@@ -56,7 +64,6 @@ export function dealHand(): Card[] {
   
   const hand = deck.slice(0, 6);
 
-  // PLO STANDARD SORTING
   const suitGroups: Record<string, Card[]> = { c: [], d: [], h: [], s: [] };
   hand.forEach(card => suitGroups[card.suit].push(card));
 
@@ -71,9 +78,7 @@ export function dealHand(): Card[] {
     for (let i = 0; i < maxLength; i++) {
       const rankA = groupA[i] ? RANK_VALUES[groupA[i].rank] : -1;
       const rankB = groupB[i] ? RANK_VALUES[groupB[i].rank] : -1;
-      if (rankA !== rankB) {
-        return rankB - rankA; 
-      }
+      if (rankA !== rankB) return rankB - rankA; 
     }
     return 0;
   });
@@ -81,9 +86,6 @@ export function dealHand(): Card[] {
   return activeGroups.flat();
 }
 
-// ═══════════════════════════════════════════════════════════
-// PLO6 HEURISTIC & TAGGING ENGINE (TUNED FOR RUNDOWNS)
-// ═══════════════════════════════════════════════════════════
 export function evaluatePLO6Hand(hand: Card[]): { percentile: number, tags: string[] } {
   let score = 0;
   const tags: string[] = [];
@@ -102,11 +104,8 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number, tags: stri
       else if (val === 13) { score += 25; hasKK = true; }
       else if (val >= 9) score += 10;
       else score += 5;
-    } else if (count === 3) {
-      score -= 10; // Penalize Trips
-    } else if (count >= 4) {
-      score -= 25; // Heavily penalize Quads
-    }
+    } else if (count === 3) score -= 10;
+    else if (count >= 4) score -= 25;
   }
 
   const suitCards: Record<string, Card[]> = { c: [], d: [], h: [], s: [] };
@@ -133,50 +132,34 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number, tags: stri
     }
   }
 
-  // TWEAK 1: Massive boost to Double Suited hands
-  if (flushDraws >= 2) {
-    score += 18; 
-    tags.push("Double Suited");
-  }
-  
+  if (flushDraws >= 2) { score += 18; tags.push("Double Suited"); }
   if (hasNutSuit) tags.push("Nut Suited");
   if (hasNonNutSuit && !hasNutSuit) tags.push("Non-Nut Suited");
 
   const uniqueRanks = Array.from(new Set(hand.map(c => RANK_VALUES[c.rank]))).sort((a, b) => b - a);
-  
   let rundownScore = 0;
   let connectedCards = 1;
   let maxConnected = 1;
   
   for (let i = 0; i < uniqueRanks.length - 1; i++) {
     const gap = uniqueRanks[i] - uniqueRanks[i + 1];
-    
-    // TWEAK 2: Better points for connectivity and 1-gappers
     if (gap === 1) {
       rundownScore += (uniqueRanks[i] >= 9 ? 14 : 10);
       connectedCards++;
       if (connectedCards > maxConnected) maxConnected = connectedCards;
     } else if (gap === 2) {
-      rundownScore += 6; // Boosted 1-gappers
-      connectedCards = 1; // Reset consecutive streak
-    } else {
+      rundownScore += 6;
       connectedCards = 1;
-    }
+    } else connectedCards = 1;
   }
 
-  // TWEAK 3: The Wrap Bonus (Synergy for 4 or 5 cards perfectly connected)
   if (maxConnected >= 4) rundownScore += 15;
   if (maxConnected >= 5) rundownScore += 10;
 
   score += rundownScore;
 
-  if (hasAA) {
-    if (flushDraws >= 1 && rundownScore >= 15) tags.push("Premium AA");
-    else tags.push("Mediocre AA");
-  } else if (hasKK) {
-    if (flushDraws >= 1 && rundownScore >= 15) tags.push("Premium KK");
-    else tags.push("Naked KK");
-  }
+  if (hasAA) tags.push(flushDraws >= 1 && rundownScore >= 15 ? "Premium AA" : "Mediocre AA");
+  else if (hasKK) tags.push(flushDraws >= 1 && rundownScore >= 15 ? "Premium KK" : "Naked KK");
 
   if (rundownScore > 35) tags.push("Premium High Rundown");
   else if (rundownScore > 18 && !hasAA && !hasKK) tags.push("Mid/Weak Rundown");
@@ -191,10 +174,7 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number, tags: stri
 
   if (tags.length === 0) tags.push("Trash/Disconnected");
 
-  // Normalize score to 1-100 (1 is BEST, 100 is WORST)
-  // Adjusted slightly so max scores don't break the percentage
   let percentile = 100 - ((score / 135) * 100);
-  
   return { 
     percentile: Math.min(Math.max(percentile, 0.1), 99.9),
     tags
@@ -217,12 +197,19 @@ export function createTableState(id: number, activePositions: Position[], drillT
     }
   }
   
-  const correctAction: Action = evalResult.percentile <= RFI_THRESHOLDS[position] ? 'raise' : 'fold';
+  const threshold = RFI_THRESHOLDS[position];
+  const diff = Math.abs(evalResult.percentile - threshold);
+  const correctAction: Action = evalResult.percentile <= threshold ? 'raise' : 'fold';
+
+  let severity: 'marginal' | 'bad' | 'blunder' = 'blunder';
+  if (diff <= 5) severity = 'marginal';
+  else if (diff <= 15) severity = 'bad';
 
   return { 
     id, position, hand, 
     percentile: evalResult.percentile, 
     tags: evalResult.tags,
-    correctAction, playerAction: null, showFeedback: false 
+    correctAction, playerAction: null, showFeedback: false,
+    severity
   };
 }
