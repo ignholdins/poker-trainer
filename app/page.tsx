@@ -11,17 +11,16 @@ import { PlayingCard, InlineCard } from '@/components/PlayingCard';
 import { PositionBadge } from '@/components/PositionBadge';
 import {
   Settings, BarChart3, History, Play, Pause, RotateCcw,
-  Keyboard, Layers, CheckCircle2, XCircle,
-  ArrowUp, ArrowDown, Filter,
+  Layers, CheckCircle2, XCircle, AlertTriangle, Target
 } from 'lucide-react';
 
 type View = 'trainer' | 'analytics' | 'history' | 'settings';
-type HistoryFilter = 'all' | 'mistakes' | 'correct';
 
 export default function PLO6Trainer() {
   const [view, setView] = useState<View>('trainer');
   const [isPaused, setIsPaused] = useState(true);
-  const [tableCount, setTableCount] = useState(1);
+  
+  const [tableCount] = useState(1);
   const [tables, setTables] = useState<TableState[]>([]);
   const [activeTableId, setActiveTableId] = useState(0);
   const [stats, setStats] = useState<SessionStats>({ total: 0, correct: 0, mistakes: [], history: [] });
@@ -29,10 +28,12 @@ export default function PLO6Trainer() {
   const [activePositions, setActivePositions] = useState<Position[]>([...RFI_POSITIONS]);
   const [raiseKey, setRaiseKey] = useState('r');
   const [foldKey, setFoldKey] = useState('f');
+  
+  const [activeDrill, setActiveDrill] = useState<string | null>(null);
 
   const dealForTable = useCallback((tableId: number): TableState => {
-    return createTableState(tableId, activePositions, 999);
-  }, [activePositions]);
+    return createTableState(tableId, activePositions, activeDrill);
+  }, [activePositions, activeDrill]);
 
   const startSession = useCallback(() => {
     const newTables = Array.from({ length: tableCount }, (_, i) => dealForTable(i));
@@ -44,50 +45,51 @@ export default function PLO6Trainer() {
   const resetSession = useCallback(() => {
     setIsPaused(true);
     setTables([]);
+    setActiveDrill(null); 
     setStats({ total: 0, correct: 0, mistakes: [], history: [] });
   }, []);
 
   const makeDecision = useCallback(async (tableId: number, action: Action) => {
-    setTables(prev => {
-      const table = prev.find(t => t.id === tableId);
-      if (!table || table.playerAction || table.showFeedback || !table.correctAction || table.percentile === null) return prev;
+    const table = tables.find(t => t.id === tableId);
+    if (!table || table.playerAction || table.showFeedback || !table.correctAction || table.percentile === null) return;
 
-      const isCorrect = action === table.correctAction;
-      const result: HandResult = {
-        hand: [...table.hand],
-        position: table.position,
-        percentile: table.percentile,
-        correctAction: table.correctAction,
-        playerAction: action,
-        isCorrect,
-        timestamp: Date.now(),
-      };
+    const isCorrect = action === table.correctAction;
+    const result: HandResult = {
+      hand: [...table.hand],
+      position: table.position,
+      percentile: table.percentile,
+      tags: table.tags,
+      correctAction: table.correctAction,
+      playerAction: action,
+      isCorrect,
+      timestamp: Date.now(),
+    };
 
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-        supabase.from('hand_history').insert([{
-          user_id: getUserId(),
-          position: result.position,
-          hand: result.hand,
-          percentile: result.percentile,
-          correct_action: result.correctAction,
-          player_action: result.playerAction,
-          is_correct: result.isCorrect
-        }]).then(({ error }) => {
-         if (error) console.error("True Error:", error.message || JSON.stringify(error));
-        });
-      }
+    setStats(s => ({
+      total: s.total + 1,
+      correct: s.correct + (isCorrect ? 1 : 0),
+      mistakes: isCorrect ? s.mistakes : [result, ...s.mistakes],
+      history: [result, ...s.history].slice(0, 500),
+    }));
 
-      setStats(s => ({
-        total: s.total + 1,
-        correct: s.correct + (isCorrect ? 1 : 0),
-        mistakes: isCorrect ? s.mistakes : [result, ...s.mistakes],
-        history: [result, ...s.history].slice(0, 500),
-      }));
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      supabase.from('hand_history').insert([{
+        user_id: getUserId(),
+        position: result.position,
+        hand: result.hand,
+        percentile: result.percentile,
+        tags: result.tags,
+        correct_action: result.correctAction,
+        player_action: result.playerAction,
+        is_correct: result.isCorrect
+      }]).then(({ error }) => {
+        if (error) console.error("Error saving hand:", error.message || error);
+      });
+    }
 
-      return prev.map(t =>
-        t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t
-      );
-    });
+    setTables(prev => prev.map(t =>
+      t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t
+    ));
 
     setTimeout(() => {
       setTables(prev => prev.map(t =>
@@ -97,7 +99,7 @@ export default function PLO6Trainer() {
         setActiveTableId(id => (id + 1) % tableCount);
       }
     }, 1800);
-  }, [dealForTable, tableCount]);
+  }, [tables, dealForTable, tableCount]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -106,10 +108,6 @@ export default function PLO6Trainer() {
       if (key === raiseKey) makeDecision(activeTableId, 'raise');
       else if (key === foldKey) makeDecision(activeTableId, 'fold');
       else if (key === ' ') { e.preventDefault(); setIsPaused(p => !p); }
-      else if (key === 'tab' && tableCount > 1) {
-        e.preventDefault();
-        setActiveTableId(id => (id + 1) % tableCount);
-      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -119,7 +117,7 @@ export default function PLO6Trainer() {
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-950 text-slate-100">
-      <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+      <header className="flex items-center justify-between px-4 sm:px-6 py-2.5 border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-sm z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
             <Layers className="w-4 h-4 text-green-500" />
@@ -132,7 +130,7 @@ export default function PLO6Trainer() {
         <nav className="flex items-center gap-0.5">
           {([
             { v: 'trainer' as View, icon: Play, label: 'Train' },
-            { v: 'analytics' as View, icon: BarChart3, label: 'Stats' },
+            { v: 'analytics' as View, icon: BarChart3, label: 'Leak Finder' },
             { v: 'history' as View, icon: History, label: 'History' },
             { v: 'settings' as View, icon: Settings, label: 'Settings' },
           ]).map(({ v, icon: Icon, label }) => (
@@ -140,9 +138,7 @@ export default function PLO6Trainer() {
               key={v}
               onClick={() => setView(v)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                view === v
-                  ? 'bg-green-600 text-white'
-                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
+                view === v ? 'bg-green-600 text-white' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800'
               }`}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -157,33 +153,31 @@ export default function PLO6Trainer() {
           <TrainerView
             tables={tables}
             activeTableId={activeTableId}
-            setActiveTableId={setActiveTableId}
             isPaused={isPaused}
             stats={stats}
             accuracy={accuracy}
-            raiseKey={raiseKey}
-            foldKey={foldKey}
-            tableCount={tableCount}
+            activeDrill={activeDrill}
             onDecision={makeDecision}
             onStart={startSession}
             onPause={() => setIsPaused(true)}
             onResume={() => setIsPaused(false)}
             onReset={resetSession}
+            onClearDrill={() => setActiveDrill(null)}
           />
         )}
-        {view === 'analytics' && <AnalyticsView stats={stats} />}
+        {view === 'analytics' && (
+          <AnalyticsView 
+            stats={stats} 
+            onStartDrill={(tag: string) => {
+              setActiveDrill(tag);
+              setView('trainer');
+              startSession();
+            }} 
+          />
+        )}
         {view === 'history' && <HistoryView stats={stats} />}
         {view === 'settings' && (
-          <SettingsView
-            activePositions={activePositions}
-            setActivePositions={setActivePositions}
-            raiseKey={raiseKey}
-            setRaiseKey={setRaiseKey}
-            foldKey={foldKey}
-            setFoldKey={setFoldKey}
-            tableCount={tableCount}
-            setTableCount={setTableCount}
-          />
+          <SettingsView activePositions={activePositions} setActivePositions={setActivePositions} />
         )}
       </main>
     </div>
@@ -194,93 +188,73 @@ export default function PLO6Trainer() {
 // Trainer View
 // ═══════════════════════════════════════════════════════════
 
-interface TrainerViewProps {
-  tables: TableState[];
-  activeTableId: number;
-  setActiveTableId: (id: number) => void;
-  isPaused: boolean;
-  stats: SessionStats;
-  accuracy: number;
-  raiseKey: string;
-  foldKey: string;
-  tableCount: number;
-  onDecision: (tableId: number, action: Action) => void;
-  onStart: () => void;
-  onPause: () => void;
-  onResume: () => void;
-  onReset: () => void;
-}
-
 function TrainerView({
-  tables, activeTableId, setActiveTableId, isPaused, stats, accuracy,
-  raiseKey, foldKey, tableCount,
-  onDecision, onStart, onPause, onResume, onReset,
-}: TrainerViewProps) {
+  tables, activeTableId, isPaused, stats, accuracy, activeDrill,
+  onDecision, onStart, onPause, onResume, onReset, onClearDrill
+}: any) {
   const hasStarted = tables.length > 0;
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 gap-6 bg-zinc-950">
+    <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-6 gap-6 bg-zinc-950 overflow-hidden relative">
+      
+      {activeDrill && (
+        <div className="absolute top-4 z-50 flex items-center gap-3 bg-blue-900/40 border border-blue-500/50 px-6 py-2 rounded-full text-blue-400 text-sm font-bold shadow-[0_0_20px_rgba(59,130,246,0.2)]">
+          <Target className="w-4 h-4" /> DRILL MODE: {activeDrill}
+          {hasStarted && (
+            <button onClick={onClearDrill} className="ml-4 text-xs bg-blue-950 hover:bg-blue-900 border border-blue-500/30 px-3 py-1 rounded-full text-blue-300">
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+
       {hasStarted && (
-        <div className="flex items-center gap-6 text-xs text-zinc-400 font-mono bg-zinc-900/40 px-6 py-2 rounded-full border border-zinc-800">
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-6 text-xs text-zinc-400 font-mono bg-zinc-900/80 backdrop-blur px-6 py-2 rounded-full border border-zinc-800">
           <span>Hands <span className="text-zinc-100 ml-1">{stats.total}</span></span>
-          <span>Correct <span className="text-green-500 ml-1">{stats.correct}</span></span>
           <span>Accuracy <span className={accuracy >= 70 ? 'text-green-500' : accuracy >= 50 ? 'text-yellow-500' : 'text-red-500'}>{accuracy}%</span></span>
-          <span>Errors <span className="text-red-500 ml-1">{stats.mistakes.length}</span></span>
         </div>
       )}
 
       {!hasStarted ? (
         <div className="bg-zinc-900 rounded-3xl border border-zinc-800 p-12 sm:p-16 text-center max-w-xl w-full shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-green-900/10 pointer-events-none" />
-          <div className="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto mb-6 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-green-500/10 flex items-center justify-center mx-auto mb-6">
             <Layers className="w-8 h-8 text-green-500" />
           </div>
-          <h2 className="text-2xl font-bold mb-2 relative z-10 text-white">Take Your Seat</h2>
-          <p className="text-zinc-400 text-sm mb-8 relative z-10">
-            Train your PLO6 RFI decisions across all 5-Max positions.<br />
-            {tableCount > 1 ? `${tableCount} tables active` : 'Single table mode'}
+          <h2 className="text-2xl font-bold mb-2 text-white">Take Your Seat</h2>
+          <p className="text-zinc-400 text-sm mb-8">
+            {activeDrill 
+              ? `You are about to drill your leak: ${activeDrill}. You will only be dealt these hands.` 
+              : `Train your PLO6 RFI decisions across all 5-Max positions.`}
           </p>
-          <button
-            onClick={onStart}
-            className="px-10 py-3 rounded-xl bg-green-600 text-white font-bold text-base hover:bg-green-500 transition-all active:scale-95 shadow-[0_0_20px_rgba(34,197,94,0.3)] relative z-10"
-          >
+          <button onClick={onStart} className="px-10 py-3 rounded-xl bg-green-600 text-white font-bold text-base hover:bg-green-500 transition-all active:scale-95 shadow-[0_0_20px_rgba(34,197,94,0.3)]">
             Sit & Deal
           </button>
         </div>
       ) : (
-        <div className={`w-full max-w-6xl ${tableCount > 1 ? 'grid grid-cols-1 lg:grid-cols-2 gap-8' : 'flex justify-center'}`}>
-          {tables.map(table => (
+        <div className="w-full max-w-5xl flex flex-col items-center relative mt-12">
+          {tables.map((table: TableState) => (
             <PokerTable
-              key={table.id}
-              table={table}
-              isActive={activeTableId === table.id}
-              isPaused={isPaused}
-              raiseKey={raiseKey}
-              foldKey={foldKey}
-              multiTable={tableCount > 1}
-              onSelect={() => setActiveTableId(table.id)}
-              onDecision={(action) => onDecision(table.id, action)}
+              key={table.id} table={table} isActive={activeTableId === table.id}
+              isPaused={isPaused} onDecision={(action: Action) => onDecision(table.id, action)}
             />
           ))}
         </div>
       )}
 
       {hasStarted && (
-        <div className="flex flex-col items-center gap-3">
-          <div className="flex items-center gap-2">
-            {!isPaused ? (
-              <button onClick={onPause} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors">
-                <Pause className="w-3.5 h-3.5" /> Pause
-              </button>
-            ) : (
-              <button onClick={onResume} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm hover:bg-green-500 transition-opacity">
-                <Play className="w-3.5 h-3.5" /> Resume
-              </button>
-            )}
-            <button onClick={onReset} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-zinc-800 text-zinc-300 text-sm hover:bg-zinc-700 transition-colors">
-              <RotateCcw className="w-3.5 h-3.5" /> Leave Table
+        <div className="absolute bottom-6 right-6 z-50 flex flex-col gap-2">
+          {!isPaused ? (
+            <button onClick={onPause} className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-zinc-700 shadow-xl">
+              <Pause className="w-5 h-5" />
             </button>
-          </div>
+          ) : (
+            <button onClick={onResume} className="w-12 h-12 flex items-center justify-center rounded-full bg-green-600 text-white hover:bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)]">
+              <Play className="w-5 h-5 ml-1" />
+            </button>
+          )}
+          <button onClick={onReset} className="w-12 h-12 flex items-center justify-center rounded-full bg-zinc-800 border border-zinc-700 text-zinc-300 hover:bg-red-900 hover:text-red-400 hover:border-red-800 shadow-xl transition-colors">
+            <RotateCcw className="w-5 h-5" />
+          </button>
         </div>
       )}
     </div>
@@ -288,275 +262,269 @@ function TrainerView({
 }
 
 // ═══════════════════════════════════════════════════════════
-// Single Poker Table (5-Max Visuals)
+// Single Poker Table (CoinPoker Layout with Blinds)
 // ═══════════════════════════════════════════════════════════
 
-interface PokerTableProps {
-  table: TableState;
-  isActive: boolean;
-  isPaused: boolean;
-  raiseKey: string;
-  foldKey: string;
-  multiTable: boolean;
-  onSelect: () => void;
-  onDecision: (action: Action) => void;
-}
-
-function PokerTable({
-  table, isActive, isPaused, raiseKey, foldKey, multiTable, onSelect, onDecision,
-}: PokerTableProps) {
+function PokerTable({ table, isActive, isPaused, onDecision }: any) {
   const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction;
-
   const CLOCKWISE_POSITIONS = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
   const heroIdx = CLOCKWISE_POSITIONS.indexOf(table.position);
   
+  // Opponents on the felt
+  // chipStyle dynamically pushes the chip onto the green felt depending on their seat
   const opponentSeats = [
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 1) % 5], style: "bottom-[25%] left-[5%] sm:left-[8%]" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 2) % 5], style: "top-[15%] left-[20%] sm:left-[25%]" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 3) % 5], style: "top-[15%] right-[20%] sm:right-[25%]" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[25%] right-[5%] sm:right-[8%]" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 1) % 5], style: "bottom-[20%] left-[2%]", chipStyle: "-top-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 2) % 5], style: "top-[15%] left-[15%]", chipStyle: "-bottom-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 3) % 5], style: "top-[15%] right-[15%]", chipStyle: "-bottom-8 left-1/2 -translate-x-1/2" },
+    { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[20%] right-[2%]", chipStyle: "-top-8 left-1/2 -translate-x-1/2" },
   ];
 
-  const renderDealerButton = (pos: string) => {
-    if (pos !== 'BTN') return null;
+  // Helper to render the posted chip for a given position
+  const renderPostedChip = (pos: string) => {
+    if (pos !== 'SB' && pos !== 'BB') return null;
+    const amount = pos === 'SB' ? '0.5' : '1';
     return (
-      <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md absolute -bottom-2 -right-2 border border-zinc-300 z-20">
-        <span className="text-[10px] font-bold text-black">D</span>
+      <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 py-0.5 rounded-full z-20 shadow-lg">
+        <div className="w-3 h-3 rounded-full bg-gradient-to-br from-red-400 to-red-700 border border-red-300/50 shadow-sm"></div>
+        <span className="text-[10px] text-white font-bold">{amount}</span>
       </div>
     );
   };
 
-  return (
-    <div className="flex flex-col items-center w-full">
-      <div
-        onClick={multiTable ? onSelect : undefined}
-        className={`relative w-full aspect-[2/1] min-h-[250px] max-w-[700px] rounded-[200px] p-3 sm:p-5 transition-all ${
-          multiTable ? 'cursor-pointer' : ''
-        } ${isActive ? 'ring-4 ring-green-500/50 shadow-[0_0_40px_rgba(34,197,94,0.15)]' : 'opacity-60 grayscale-[30%]'}`}
-        style={{
-          background: 'linear-gradient(to bottom, #18181b, #09090b)',
-          boxShadow: 'inset 0 4px 10px rgba(255,255,255,0.1), 0 10px 30px rgba(0,0,0,0.5)',
-        }}
-      >
-        <div className="relative w-full h-full rounded-[180px] flex flex-col items-center justify-between p-4 sm:p-6 overflow-hidden border-2 border-emerald-900/50"
-             style={{
-               background: 'radial-gradient(ellipse at center, #065f46 0%, #022c22 100%)',
-               boxShadow: 'inset 0 10px 30px rgba(0,0,0,0.6)'
-             }}>
-          
-          <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
+  // Calculate where the Floating Dealer Button should be on the felt
+  let dealerStyle = "bottom-[25%] right-[35%]"; // Default Hero location
+  if (opponentSeats[0].pos === 'BTN') dealerStyle = "bottom-[25%] left-[18%]";
+  else if (opponentSeats[1].pos === 'BTN') dealerStyle = "top-[25%] left-[28%]";
+  else if (opponentSeats[2].pos === 'BTN') dealerStyle = "top-[25%] right-[28%]";
+  else if (opponentSeats[3].pos === 'BTN') dealerStyle = "bottom-[25%] right-[18%]";
 
+  return (
+    <div className="flex flex-col items-center w-full max-w-[850px] relative">
+      
+      {/* 1. THE BACKGROUND TABLE FELT */}
+      <div className={`relative w-full aspect-[2.2/1] min-h-[220px] rounded-[300px] p-2 sm:p-4 transition-all ${isActive ? '' : 'opacity-50 grayscale'}`}
+           style={{ background: 'linear-gradient(to bottom, #1f2937, #111827)', boxShadow: 'inset 0 4px 10px rgba(255,255,255,0.05), 0 20px 40px rgba(0,0,0,0.8)' }}>
+        
+        <div className="relative w-full h-full rounded-[250px] flex items-center justify-center border-4 border-zinc-800/80 overflow-hidden"
+             style={{ background: 'radial-gradient(ellipse at center, #0f766e 0%, #064e3b 100%)', boxShadow: 'inset 0 10px 40px rgba(0,0,0,0.7)' }}>
+          
+          {/* Floating Dealer Button */}
+          <div className={`absolute ${dealerStyle} z-20 w-7 h-7 bg-gradient-to-b from-red-500 to-red-700 rounded-full flex items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.6)] border border-red-300/50 transition-all duration-500`}>
+             <span className="text-white font-black text-[10px] drop-shadow-md">D</span>
+          </div>
+
+          {/* Hero's Posted Chip (if Hero is SB or BB) */}
+          {(table.position === 'SB' || table.position === 'BB') && (
+            <div className="absolute bottom-[12%] left-1/2 -translate-x-1/2 z-20">
+              {renderPostedChip(table.position)}
+            </div>
+          )}
+
+          {/* Opponent Nameplates and their Posted Chips */}
           {opponentSeats.map((seat, i) => (
             <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center`}>
-              <div className="relative bg-zinc-900 border border-white/10 rounded-full px-4 py-1.5 text-center shadow-xl">
-                <span className="text-[10px] sm:text-xs font-bold text-zinc-300 uppercase tracking-wider">{seat.pos}</span>
-                {renderDealerButton(seat.pos)}
+              {/* Opponent Posted Chip */}
+              {(seat.pos === 'SB' || seat.pos === 'BB') && (
+                <div className={`absolute ${seat.chipStyle}`}>
+                  {renderPostedChip(seat.pos)}
+                </div>
+              )}
+              
+              <div className="flex -mb-4 opacity-80 scale-75">
+                 {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
+              </div>
+              <div className="relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-6 py-1 text-center shadow-xl z-20">
+                <span className="text-xs font-medium text-zinc-100">{seat.pos}</span>
               </div>
             </div>
           ))}
 
-          <div className="relative z-10 flex flex-col items-center mt-2">
-            <div className="bg-black/60 backdrop-blur-sm px-4 py-1.5 rounded-full border border-white/10 flex items-center gap-3 shadow-xl">
-               {multiTable && (
-                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest border-r border-white/10 pr-3">
-                  T{table.id + 1}
-                </span>
-              )}
-              <span className="text-[11px] text-zinc-300 font-mono font-bold uppercase tracking-wider">
-                Hero: {table.position}
-              </span>
-            </div>
+          {/* Center Pot (Now correctly showing 1.5 for the blinds) */}
+          <div className="absolute top-[35%] bg-blue-900/40 text-blue-300 text-xs font-bold px-4 py-1 rounded-full border border-blue-500/30 shadow-inner">
+            Pot 1.5
           </div>
 
-          {/* Feedback Area */}
+          {/* Feedback Overlay */}
           {table.showFeedback && table.percentile !== null && (
-            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex flex-col items-center justify-center p-5 rounded-2xl backdrop-blur-md border shadow-2xl animate-in fade-in zoom-in duration-200 ${
-              table.playerAction === table.correctAction
-                ? 'bg-emerald-950/90 border-green-500/40'
-                : 'bg-rose-950/90 border-red-500/40'
+            <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-6 rounded-2xl backdrop-blur-md border shadow-2xl animate-in fade-in zoom-in duration-200 ${
+              table.playerAction === table.correctAction ? 'bg-emerald-950/95 border-green-500/50' : 'bg-rose-950/95 border-red-500/50'
             }`}>
-              <div className="flex items-center gap-2 mb-2">
-                {table.playerAction === table.correctAction
-                  ? <CheckCircle2 className="w-7 h-7 text-green-500" />
-                  : <XCircle className="w-7 h-7 text-red-500" />
-                }
-                <span className={`font-bold text-xl ${
-                  table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {table.playerAction === table.correctAction ? 'Correct' : 'Mistake'}
+              <div className="flex items-center gap-3 mb-2">
+                {table.playerAction === table.correctAction ? <CheckCircle2 className="w-7 h-7 text-green-500" /> : <XCircle className="w-7 h-7 text-red-500" />}
+                <span className={`font-black text-xl uppercase tracking-widest ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
+                  {table.playerAction === table.correctAction ? 'Perfect' : 'Mistake'}
                 </span>
               </div>
-              
-              <div className="text-sm text-zinc-200 flex gap-2 items-center bg-black/40 px-4 py-1.5 rounded-full border border-white/10">
-                <span className="opacity-70">Top:</span> <span className="font-mono font-bold text-white">{table.percentile.toFixed(1)}%</span>
-                <span className="opacity-40">|</span>
-                <span className="opacity-70">Answer:</span> 
-                <span className={`font-bold tracking-wider ${table.correctAction === 'raise' ? 'text-green-400' : 'text-red-400'}`}>
-                  {table.correctAction?.toUpperCase()}
-                </span>
+              <div className="text-xs text-zinc-200 flex flex-col gap-1 items-center bg-black/50 px-4 py-2 rounded-lg border border-white/10 w-full text-center">
+                <div className="flex justify-between w-full border-b border-white/10 pb-1">
+                   <span className="opacity-70">Solver Top:</span>
+                   <span className="font-mono font-bold">{table.percentile.toFixed(1)}%</span>
+                </div>
+                <div className="flex justify-between w-full pt-1">
+                   <span className="opacity-70">Answer:</span>
+                   <span className={`font-black uppercase ${table.correctAction === 'raise' ? 'text-green-400' : 'text-red-400'}`}>{table.correctAction}</span>
+                </div>
               </div>
             </div>
           )}
-
-          {isPaused && !table.showFeedback && (
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-black/60 px-6 py-2 rounded-full border border-white/10">
-               <span className="text-sm font-medium text-white/70 tracking-widest uppercase">Paused</span>
-             </div>
-          )}
-
-          <div className="relative z-10 mt-auto translate-y-4 sm:translate-y-6">
-            <div className="flex items-center justify-center gap-1 sm:gap-1.5 shadow-2xl relative">
-              {isPaused ? (
-                table.hand.map((card, i) => (
-                  <PlayingCard key={i} card={card} index={i} revealed={false} compact={multiTable} />
-                ))
-              ) : (
-                <AnimatePresence mode="popLayout">
-                  {table.hand.map((card, i) => (
-                    <motion.div
-                      key={`${table.id}-${card.rank}${card.suit}-${i}`} 
-                      initial={{ opacity: 0, y: -120, x: (2.5 - i) * 20, scale: 0.5 }}
-                      animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                      transition={{ 
-                        duration: 0.35, 
-                        delay: i * 0.08, 
-                        type: "spring",
-                        stiffness: 250,
-                        damping: 20
-                      }}
-                      className="hover:-translate-y-2 transition-transform duration-200 cursor-default"
-                    >
-                      <PlayingCard card={card} index={i} compact={multiTable} />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              )}
-            </div>
-            
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-              className="mt-3 relative mx-auto w-max"
-            >
-              <div className="bg-zinc-900 border border-green-500/30 rounded-full px-6 py-1.5 text-center shadow-lg">
-                <span className="text-xs font-bold text-green-400 uppercase tracking-widest">{table.position}</span>
-                {renderDealerButton(table.position)}
-              </div>
-            </motion.div>
-          </div>
         </div>
       </div>
 
-      <div className={`mt-6 w-full max-w-[400px] flex gap-3 transition-opacity duration-200 ${canAct ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDecision('fold'); }}
-          className="flex-1 flex flex-col items-center justify-center py-3 sm:py-4 rounded-xl bg-gradient-to-b from-rose-600 to-rose-800 border border-rose-500 shadow-[0_4px_0_rgb(159,18,57)] hover:from-rose-500 hover:to-rose-700 active:translate-y-[4px] active:shadow-none transition-all"
-        >
-          <span className="text-white font-bold text-lg leading-none shadow-black drop-shadow-md">Fold</span>
-          <span className="text-[10px] text-white/60 font-mono mt-1">[{foldKey.toUpperCase()}]</span>
-        </button>
+      {/* 2. THE HERO AREA (THE COINPOKER FAN) */}
+      <div className="relative z-30 -mt-12 sm:-mt-16 flex flex-col items-center w-full max-w-[600px]">
         
-        <button
-          onClick={(e) => { e.stopPropagation(); onDecision('raise'); }}
-          className="flex-1 flex flex-col items-center justify-center py-3 sm:py-4 rounded-xl bg-gradient-to-b from-emerald-500 to-emerald-700 border border-emerald-400 shadow-[0_4px_0_rgb(6,95,70)] hover:from-emerald-400 hover:to-emerald-600 active:translate-y-[4px] active:shadow-none transition-all"
-        >
-          <span className="text-white font-bold text-lg leading-none shadow-black drop-shadow-md">Raise</span>
-          <span className="text-[10px] text-white/60 font-mono mt-1">[{raiseKey.toUpperCase()}]</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
-// Analytics & Other Views
-// ═══════════════════════════════════════════════════════════
-
-function AnalyticsView({ stats }: { stats: SessionStats }) {
-  const accuracy = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-  const posStats: Record<string, { total: number; correct: number }> = {};
-  
-  stats.history.forEach(h => {
-    if (!posStats[h.position]) posStats[h.position] = { total: 0, correct: 0 };
-    posStats[h.position].total++;
-    if (h.isCorrect) posStats[h.position].correct++;
-  });
-
-  return (
-    <div className="flex-1 p-4 sm:p-8 max-w-3xl mx-auto w-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-5 text-white">Session Analytics</h2>
-      {stats.total === 0 ? (
-        <div className="text-center py-20 text-zinc-500">
-          <BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No hands played yet.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Stat label="Total" value={stats.total} />
-            <Stat label="Correct" value={stats.correct} accent="text-green-500" />
-            <Stat label="Mistakes" value={stats.mistakes.length} accent="text-red-500" />
-            <Stat label="Accuracy" value={`${accuracy}%`} accent={accuracy >= 70 ? 'text-green-500' : 'text-red-500'} />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold mb-3 text-zinc-400 uppercase tracking-wider">By Position</h3>
-            <div className="space-y-1.5">
-              {Object.entries(posStats).sort(([a], [b]) => RFI_POSITIONS.indexOf(a as Position) - RFI_POSITIONS.indexOf(b as Position)).map(([pos, d]) => {
-                const acc = Math.round((d.correct / d.total) * 100);
+        {/* The Fanned Cards */}
+        <div className="flex justify-center items-end h-[120px] sm:h-[150px] w-full">
+          {isPaused ? (
+            table.hand.map((card: CardType, i: number) => {
+              const rotations = [-15, -9, -3, 3, 9, 15];
+              const yOffsets = [18, 6, 0, 0, 6, 18];
+              return (
+                <div key={i} className="relative shadow-2xl origin-bottom" style={{ transform: `rotate(${rotations[i]}deg) translateY(${yOffsets[i]}px)`, zIndex: i, marginLeft: i === 0 ? '0px' : '-1rem' }}>
+                   <PlayingCard card={card} index={i} revealed={false} compact={false} />
+                </div>
+              );
+            })
+          ) : (
+            <AnimatePresence mode="popLayout">
+              {table.hand.map((card: CardType, i: number) => {
+                const rotations = [-15, -9, -3, 3, 9, 15];
+                const yOffsets = [18, 6, 0, 0, 6, 18];
+                
                 return (
-                  <div key={pos} className="flex items-center gap-3 p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
-                    <PositionBadge position={pos as Position} size="sm" />
-                    <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${acc}%` }} />
-                    </div>
-                    <span className="font-mono text-xs w-24 text-right text-zinc-400">
-                      {acc}% <span className="opacity-50">({d.correct}/{d.total})</span>
-                    </span>
-                  </div>
+                  <motion.div 
+                    key={`${table.id}-${card.rank}${card.suit}-${i}`} 
+                    initial={{ opacity: 0, y: 100, scale: 0.5, rotate: 0 }} 
+                    animate={{ opacity: 1, y: yOffsets[i], scale: 1, rotate: rotations[i], marginLeft: i === 0 ? '0px' : '-1rem' }}
+                    exit={{ opacity: 0, y: -50, scale: 0.8 }} 
+                    whileHover={{ y: yOffsets[i] - 20, zIndex: 100, scale: 1.05 }}
+                    transition={{ duration: 0.3, delay: i * 0.04, type: "spring", stiffness: 250, damping: 25 }}
+                    style={{ zIndex: i + 10, transformOrigin: 'bottom center' }}
+                    className="relative cursor-pointer shadow-[2px_4px_12px_rgba(0,0,0,0.5)] rounded-lg"
+                  >
+                    <PlayingCard card={card} index={i} compact={false} />
+                  </motion.div>
                 );
               })}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Hero Nameplate under cards */}
+        <div className="relative z-40 mt-[-10px] bg-zinc-900 border-t border-zinc-600 rounded-md px-10 py-1 shadow-[0_10px_20px_rgba(0,0,0,0.8)] flex flex-col items-center">
+          <span className="text-zinc-200 text-sm font-medium">{table.position}</span>
+          <span className="text-yellow-500 font-bold text-sm tracking-wide">HERO</span>
+        </div>
+      </div>
+
+      {/* 3. THE ACTION BUTTONS */}
+      <div className={`mt-6 w-full max-w-[450px] flex gap-3 transition-all duration-300 ${canAct ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        <button onClick={(e) => { e.stopPropagation(); onDecision('fold'); }}
+          className="flex-1 py-3 rounded-lg bg-gradient-to-b from-rose-500 to-rose-700 border border-rose-800 shadow-[0_4px_0_rgb(136,19,55)] hover:from-rose-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-lg tracking-wide">
+          Fold
+        </button>
+        <button onClick={(e) => { e.stopPropagation(); onDecision('raise'); }}
+          className="flex-1 py-3 rounded-lg bg-gradient-to-b from-emerald-500 to-emerald-700 border border-emerald-800 shadow-[0_4px_0_rgb(6,95,70)] hover:from-emerald-400 active:translate-y-[4px] active:shadow-none transition-all text-white font-bold text-lg tracking-wide">
+          Raise
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// Leak Finder Analytics View
+// ═══════════════════════════════════════════════════════════
+
+function AnalyticsView({ stats, onStartDrill }: any) {
+  if (stats.total === 0) return <div className="text-center py-20 text-zinc-500"><BarChart3 className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>Play some hands to generate analytics.</p></div>;
+
+  const tagStats: Record<string, { total: number; correct: number }> = {};
+  stats.history.forEach((h: HandResult) => {
+    h.tags.forEach(tag => {
+      if (!tagStats[tag]) tagStats[tag] = { total: 0, correct: 0 };
+      tagStats[tag].total++;
+      if (h.isCorrect) tagStats[tag].correct++;
+    });
+  });
+
+  const sortedTags = Object.entries(tagStats)
+    .map(([tag, data]) => ({ tag, ...data, accuracy: Math.round((data.correct / data.total) * 100) }))
+    .filter(t => t.total >= 3) 
+    .sort((a, b) => a.accuracy - b.accuracy);
+
+  const majorLeaks = sortedTags.filter(t => t.accuracy <= 60);
+
+  return (
+    <div className="flex-1 p-4 sm:p-8 max-w-4xl mx-auto w-full overflow-y-auto space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold mb-1 text-white">Leak Finder</h2>
+        <p className="text-zinc-400 text-sm mb-6">Cross-referencing your decisions against heuristic categories.</p>
+      </div>
+
+      {majorLeaks.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-rose-500 uppercase tracking-wider flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4" /> Major Leaks Detected
+          </h3>
+          {majorLeaks.map(leak => (
+            <div key={leak.tag} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-rose-950/20 border border-rose-900/50 rounded-xl gap-4">
+              <div>
+                <h4 className="text-white font-bold text-lg">{leak.tag}</h4>
+                <p className="text-zinc-400 text-sm">
+                  You are misplaying these hands. Accuracy: <span className="text-rose-400 font-mono">{leak.accuracy}%</span> ({leak.correct}/{leak.total})
+                </p>
+              </div>
+              <button onClick={() => onStartDrill(leak.tag)} className="w-full sm:w-auto px-6 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2">
+                <Target className="w-4 h-4" /> Drill This Leak
+              </button>
             </div>
-          </div>
+          ))}
         </div>
       )}
+
+      <div>
+        <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">All Category Accuracy</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {sortedTags.map(t => (
+            <div key={t.tag} className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+              <span className="text-zinc-300 font-medium text-sm">{t.tag}</span>
+              <div className="flex items-center gap-3">
+                <div className="w-24 h-1.5 bg-zinc-800 rounded-full overflow-hidden hidden sm:block">
+                  <div className={`h-full rounded-full ${t.accuracy > 75 ? 'bg-green-500' : t.accuracy > 60 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ width: `${t.accuracy}%` }} />
+                </div>
+                <span className={`font-mono text-xs w-10 text-right ${t.accuracy > 75 ? 'text-green-400' : t.accuracy > 60 ? 'text-yellow-400' : 'text-red-400'}`}>{t.accuracy}%</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function Stat({ label, value, accent }: { label: string; value: string | number; accent?: string }) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 text-center">
-      <div className={`text-xl font-bold font-mono ${accent || 'text-white'}`}>{value}</div>
-      <div className="text-[10px] text-zinc-500 mt-0.5 uppercase tracking-wider">{label}</div>
-    </div>
-  );
-}
+// ═══════════════════════════════════════════════════════════
+// History & Settings
+// ═══════════════════════════════════════════════════════════
 
-function HistoryView({ stats }: { stats: SessionStats }) {
-  const [filter, setFilter] = useState<HistoryFilter>('all');
-  const sorted = stats.history.filter(h => filter === 'all' ? true : filter === 'correct' ? h.isCorrect : !h.isCorrect);
-
+function HistoryView({ stats }: any) {
   return (
     <div className="flex-1 p-4 sm:p-8 max-w-5xl mx-auto w-full overflow-y-auto">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-bold text-white">Hand History</h2>
-      </div>
-      {stats.history.length === 0 ? (
-        <div className="text-center py-20 text-zinc-500">
-          <History className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No hands played yet.</p>
-        </div>
-      ) : (
-        <div className="space-y-0.5">
-          {sorted.map((h, i) => (
+      <h2 className="text-xl font-bold text-white mb-5">Hand History</h2>
+      {stats.history.length === 0 ? <p className="text-zinc-500">No hands played yet.</p> : (
+        <div className="space-y-1">
+          {stats.history.map((h: HandResult, i: number) => (
             <div key={i} className={`flex items-center gap-4 px-4 py-3 rounded-lg border ${h.isCorrect ? 'bg-zinc-900 border-zinc-800' : 'bg-red-950/20 border-red-900/30'}`}>
               {h.isCorrect ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
               <PositionBadge position={h.position} size="sm" />
-              <div className="flex items-center gap-1.5">
-                {h.hand.map((c, ci) => <InlineCard key={ci} card={c} />)}
+              <div className="flex items-center gap-1.5">{h.hand.map((c, ci) => <InlineCard key={ci} card={c} />)}</div>
+              
+              <div className="hidden lg:flex gap-1 ml-4">
+                {h.tags.map(t => <span key={t} className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full">{t}</span>)}
               </div>
+
               <div className="ml-auto text-right font-mono text-xs text-zinc-400">
-                Correct: <span className={h.correctAction === 'raise' ? 'text-green-500' : 'text-red-500'}>{h.correctAction.toUpperCase()}</span>
+                Action: <span className={h.correctAction === 'raise' ? 'text-green-500' : 'text-red-500'}>{h.correctAction.toUpperCase()}</span>
               </div>
             </div>
           ))}
@@ -566,44 +534,23 @@ function HistoryView({ stats }: { stats: SessionStats }) {
   );
 }
 
-interface SettingsViewProps {
-  activePositions: Position[];
-  setActivePositions: (p: Position[]) => void;
-  raiseKey: string;
-  setRaiseKey: (k: string) => void;
-  foldKey: string;
-  setFoldKey: (k: string) => void;
-  tableCount: number;
-  setTableCount: (n: number) => void;
-}
-
-function SettingsView({ activePositions, setActivePositions, raiseKey, setRaiseKey, foldKey, setFoldKey, tableCount, setTableCount }: SettingsViewProps) {
+function SettingsView({ activePositions, setActivePositions }: any) {
   const toggle = (pos: Position) => {
-    if (activePositions.includes(pos) && activePositions.length > 1) setActivePositions(activePositions.filter(p => p !== pos));
+    if (activePositions.includes(pos) && activePositions.length > 1) setActivePositions(activePositions.filter((p: Position) => p !== pos));
     else if (!activePositions.includes(pos)) setActivePositions([...activePositions, pos]);
   };
-
   return (
     <div className="flex-1 p-4 sm:p-8 max-w-2xl mx-auto w-full overflow-y-auto">
-      <h2 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
-        <Settings className="w-5 h-5 text-zinc-500" /> Settings
-      </h2>
+      <h2 className="text-xl font-bold mb-6 text-white flex items-center gap-2"><Settings className="w-5 h-5 text-zinc-500" /> Settings</h2>
       <div className="space-y-8">
-        <div>
-          <h3 className="text-sm font-semibold mb-2 text-zinc-300">Tables</h3>
-          <div className="flex gap-2">
-            {[1, 2].map(n => (
-              <button key={n} onClick={() => setTableCount(n)} className={`px-5 py-2 rounded-lg border font-mono text-sm font-bold ${tableCount === n ? 'bg-green-600 border-green-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
-                {n} {n === 1 ? 'Table' : 'Tables'}
-              </button>
-            ))}
-          </div>
-        </div>
         <div>
           <h3 className="text-sm font-semibold mb-2 text-zinc-300">RFI Positions</h3>
           <div className="flex flex-wrap gap-2">
             {RFI_POSITIONS.map(pos => (
-              <button key={pos} onClick={() => toggle(pos)} className={`px-4 py-2 rounded-lg border font-mono font-bold text-sm ${activePositions.includes(pos) ? 'bg-green-600 border-green-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}>
+              <button 
+                key={pos} onClick={() => toggle(pos)} 
+                className={`px-4 py-2 rounded-lg border font-mono font-bold text-sm ${activePositions.includes(pos) ? 'bg-green-600 border-green-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}
+              >
                 {pos}
               </button>
             ))}
