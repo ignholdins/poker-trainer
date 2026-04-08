@@ -21,11 +21,15 @@ export interface HandResult {
   playerAction: Action;
   isCorrect: boolean;
   timestamp: number;
+  evDiff: number;
 }
 
 export interface SessionStats {
   total: number;
   correct: number;
+  evScore: number;
+  currentStreak: number;
+  bestStreak: number;
   mistakes: HandResult[];
   history: HandResult[];
 }
@@ -42,6 +46,7 @@ export interface TableState {
   playerAction?: Action;
   showFeedback: boolean;
   raiserPosition?: Position;
+  evDiff?: number;
 }
 
 export const RFI_POSITIONS: Position[] = ['UTG', 'CO', 'BTN', 'SB'];
@@ -319,6 +324,26 @@ export function dealHand(activeDrill: string | null = null): Card[] {
     }
   }
   return [];
+}
+
+// ─── EV CALCULATION ───────────────────────────────────────────────────────────
+export function calculateEVLoss(percentile: number, action: Action, correctAction: Action): number {
+  if (action === correctAction) return 0;
+  
+  // RFI Scenarios
+  if (correctAction === 'raise' && action === 'fold') {
+    // Should have raised, folded instead. Losing value. 
+    // e.g. Aces (1%) -> huge loss. Marginals (50%) -> small loss.
+    const normalizedStrength = Math.max(0, 100 - percentile);
+    return -Number(((normalizedStrength / 100) * 1.5).toFixed(2));
+  } else if (correctAction === 'fold' && action === 'raise') {
+    // Should have folded, raised instead. Spewing chips.
+    // e.g. Trash (99%) -> huge loss. Marginals (55%) -> small loss.
+    const normalizedWeakness = Math.max(0, percentile);
+    return -Number(((normalizedWeakness / 100) * 2.5).toFixed(2));
+  }
+  
+  return -0.5; // fallback
 }
 
 // ─── CREATE TABLE STATE ───────────────────────────────────────────────────────

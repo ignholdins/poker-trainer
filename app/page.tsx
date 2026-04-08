@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, getUserId } from '@/lib/supabase';
 import {
   Card as CardType, Position, Action, HandResult, SessionStats, TableState,
-  RFI_POSITIONS, createTableState,
+  RFI_POSITIONS, createTableState, calculateEVLoss
 } from '@/lib/poker';
 import { PlayingCard, InlineCard } from '@/components/PlayingCard';
 import { PositionBadge } from '@/components/PositionBadge';
@@ -19,10 +19,33 @@ export default function PLO6Trainer() {
   const [view, setView] = useState<View>('trainer');
   const [isPaused, setIsPaused] = useState(true);
   const [tables, setTables] = useState<TableState[]>([]);
-  const [stats, setStats] = useState<SessionStats>({ total: 0, correct: 0, mistakes: [], history: [] });
+  const [stats, setStats] = useState<SessionStats>({ total: 0, correct: 0, evScore: 0, currentStreak: 0, bestStreak: 0, mistakes: [], history: [] });
   const [activePositions, setActivePositions] = useState<Position[]>([...RFI_POSITIONS]);
   const [activeDrill, setActiveDrill] = useState<string | null>(null);
   const [streak, setStreak] = useState(0);
+  const [proModalOpen, setProModalOpen] = useState(false);
+
+  const playSound = (type: 'correct' | 'mistake') => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      if (type === 'correct') {
+        osc.type = 'sine'; osc.frequency.setValueAtTime(600, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+        osc.start(); osc.stop(ctx.currentTime + 0.1);
+      } else {
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(200, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+      }
+    } catch(e) {}
+  };
 
   useEffect(() => {
     async function loadHistory() {
@@ -36,9 +59,9 @@ export default function PLO6Trainer() {
           hand: item.hand, position: item.position, scenario: item.scenario || 'RFI',
           percentile: item.percentile, tags: item.tags || [], explanation: item.explanation || '',
           correctAction: item.correct_action, playerAction: item.player_action,
-          isCorrect: item.is_correct, timestamp: new Date(item.created_at).getTime()
+          isCorrect: item.is_correct, timestamp: new Date(item.created_at).getTime(), evDiff: 0
         }));
-        setStats({ total: formatted.length, correct: formatted.filter(h => h.isCorrect).length, mistakes: formatted.filter(h => !h.isCorrect), history: formatted });
+        setStats(s => ({ ...s, total: formatted.length, correct: formatted.filter(h => h.isCorrect).length, mistakes: formatted.filter(h => !h.isCorrect), history: formatted }));
       }
     }
     loadHistory();
@@ -56,19 +79,29 @@ export default function PLO6Trainer() {
     if (!table || table.playerAction || table.showFeedback || !table.correctAction) return;
 
     const isCorrect = action === table.correctAction;
+    const evDiff = calculateEVLoss(table.percentile!, action, table.correctAction);
+    playSound(isCorrect ? 'correct' : 'mistake');
+
     const result: HandResult = {
       hand: [...table.hand], position: table.position, scenario: table.scenario || 'RFI',
       percentile: table.percentile!, tags: table.tags, explanation: table.explanation,
       correctAction: table.correctAction, playerAction: action,
-      isCorrect, timestamp: Date.now()
+      isCorrect, timestamp: Date.now(), evDiff
     };
 
     setStreak(s => isCorrect ? s + 1 : 0);
-    setStats(s => ({
-      total: s.total + 1, correct: s.correct + (isCorrect ? 1 : 0),
-      mistakes: isCorrect ? s.mistakes : [result, ...s.mistakes],
-      history: [result, ...s.history].slice(0, 100)
-    }));
+    setStats(s => {
+      const newStreak = isCorrect ? s.currentStreak + 1 : 0;
+      return {
+        ...s,
+        total: s.total + 1, correct: s.correct + (isCorrect ? 1 : 0),
+        evScore: s.evScore + evDiff,
+        currentStreak: newStreak,
+        bestStreak: Math.max(s.bestStreak, newStreak),
+        mistakes: isCorrect ? s.mistakes : [result, ...s.mistakes],
+        history: [result, ...s.history].slice(0, 100)
+      };
+    });
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       try {
@@ -83,7 +116,7 @@ export default function PLO6Trainer() {
       }
     }
 
-    setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t));
+    setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true, evDiff } : t));
     const nextTable = createTableState(tableId, activePositions, activeDrill);
     setTimeout(() => {
       setTables(prev => prev.map(t => t.id === tableId ? nextTable : t));
@@ -149,7 +182,7 @@ export default function PLO6Trainer() {
                     Take Your Seat
                   </h2>
                   <p className="text-sm sm:text-base max-w-md" style={{ color: 'var(--text-secondary)' }}>
-                    Train RFI decision-making across all 5-Max positions. GTO-calibrated grades, instant feedback.
+                    Train RFI decision-making across all 5-Max positions. GTO-calibrated grades, instant feedback, and EV tracking.
                   </p>
                 </div>
                 <button
@@ -181,9 +214,37 @@ export default function PLO6Trainer() {
                 <PokerTable key={table.id} table={table} isActive={true} isPaused={isPaused} onDecision={(act: Action) => makeDecision(table.id, act)} />
               ))
             )}
+            
+            {/* PRO UPGRADE MODAL */}
+            {proModalOpen && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in" style={{ backdropFilter: 'blur(10px)', background: 'rgba(8,11,16,0.85)' }}>
+                <div className="flex flex-col items-center gap-6 p-8 rounded-3xl max-w-sm w-full text-center shadow-[0_0_80px_rgba(168,85,247,0.15)] border border-purple-500/30" style={{ background: 'rgba(13,17,23,0.95)' }}>
+                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center bg-gradient-to-br from-purple-600 to-blue-600 mb-2 shadow-lg">
+                    <span className="text-3xl">👑</span>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black mb-2 text-white">Unlock PRO Mastery</h3>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      Upgrade to unlock advanced 3-Bet defense, custom positional drills, detailed EV leak reports, and cloud sync.
+                    </p>
+                  </div>
+                  <div className="flex flex-col w-full gap-3 mt-2">
+                    <button className="w-full py-4 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 transition-all shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                      Start 7-Day Free Trial
+                    </button>
+                    <button onClick={() => setProModalOpen(false)} className="w-full py-3 rounded-xl font-semibold text-slate-400 hover:text-white transition-colors">
+                      Maybe Later
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
-        {view === 'drills' && <DrillsView onSelectDrill={startSession} />}
+        {view === 'drills' && <DrillsView onSelectDrill={(drill) => {
+          if (drill.isPro) setProModalOpen(true);
+          else startSession(drill.name);
+        }} />}
         {view === 'analytics' && <AnalyticsView stats={stats} />}
         {view === 'history' && <HistoryView history={stats.history} />}
         {view === 'settings' && <SettingsView activePositions={activePositions} setActivePositions={setActivePositions} />}
@@ -324,7 +385,14 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                   </div>
                   <div className="h-8 w-px bg-white/10" />
                   <div className="flex flex-col items-start gap-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase" style={{ background: `${tier.color}15`, color: tier.color }}>{tier.label}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase" style={{ background: `${tier.color}15`, color: tier.color }}>{tier.label}</span>
+                      {!isCorrect && (
+                        <span className="text-[10px] font-black font-mono px-2 py-0.5 rounded" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}>
+                          {table.evDiff!} EV
+                        </span>
+                      )}
+                    </div>
                     <div className="flex flex-wrap gap-1">
                       {table.tags.slice(0, 2).map(tag => (
                         <span key={tag} className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>{tag}</span>
@@ -414,7 +482,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
 // ────────────────────────────────────────────────────────────────────────────
 // DRILLS VIEW
 // ────────────────────────────────────────────────────────────────────────────
-function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: string) => void }) {
+function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: any) => void }) {
   const drills = [
     {
       name: 'The Premiums',
@@ -440,6 +508,24 @@ function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: string) => void 
       bg: 'rgba(96,165,250,0.05)',
       border: 'rgba(96,165,250,0.2)',
     },
+    {
+      name: 'Facing 3-Bet',
+      desc: 'Learn vital GTO defense ranges when facing an aggressive 3-bet. Master fold vs flat vs 4-bet.',
+      tier: 'Advanced',
+      accent: '#a855f7',
+      bg: 'rgba(168,85,247,0.05)',
+      border: 'rgba(168,85,247,0.2)',
+      isPro: true,
+    },
+    {
+      name: 'Blind vs Blind',
+      desc: 'Specialized drill for wide range clashes in the blinds. High EV-loss potential scenarios.',
+      tier: 'Advanced',
+      accent: '#ec4899',
+      bg: 'rgba(236,72,153,0.05)',
+      border: 'rgba(236,72,153,0.2)',
+      isPro: true,
+    },
   ];
 
   return (
@@ -452,15 +538,20 @@ function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: string) => void 
         {drills.map(drill => (
           <button
             key={drill.name}
-            onClick={() => onSelectDrill(drill.name)}
-            className="w-full text-left p-5 rounded-2xl transition-all active:scale-95 hover:brightness-110"
+            onClick={() => onSelectDrill(drill)}
+            className="w-full text-left p-5 rounded-2xl transition-all active:scale-95 hover:brightness-110 relative overflow-hidden"
             style={{ background: drill.bg, border: `1px solid ${drill.border}` }}
           >
+            {drill.isPro && (
+              <div className="absolute top-0 right-0 px-3 py-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-bl-xl font-bold text-[9px] uppercase tracking-widest text-white shadow-lg">
+                👑 PRO
+              </div>
+            )}
             <div className="flex items-start justify-between mb-2">
               <h3 className="text-base font-black" style={{ color: drill.accent }}>{drill.name}</h3>
               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: `${drill.accent}20`, color: drill.accent }}>{drill.tier}</span>
             </div>
-            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{drill.desc}</p>
+            <p className="text-xs leading-relaxed max-w-[90%]" style={{ color: 'var(--text-secondary)' }}>{drill.desc}</p>
           </button>
         ))}
       </div>
