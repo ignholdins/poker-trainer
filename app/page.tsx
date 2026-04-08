@@ -319,9 +319,13 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       <div className="flex flex-col items-center w-full max-w-[1100px] gap-2 sm:gap-4 relative pb-4 sm:pb-0">
 
       {/* ── TABLE FELT ── */}
-      <div className="relative w-full rounded-[60px] sm:rounded-[120px] shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2.4 / 1', background: '#0a1a14', border: '3px solid rgba(255,255,255,0.06)', boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
-        {/* Outer ring */}
-        <div className="absolute inset-2 sm:inset-3 rounded-[50px] sm:rounded-[110px] felt" style={{ border: '2px solid rgba(255,255,255,0.04)' }}>
+      <div className="relative w-full shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2 / 1', borderRadius: '50%', background: '#1d2a1e', border: '14px solid #1a1008', boxShadow: '0 0 0 3px #3d2808, 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.04)' }}>
+        {/* Green felt surface */}
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 40%, #2d6e3a 0%, #1b5228 55%, #0e3519 100%)' }} />
+        {/* Inner rim highlight ring */}
+        <div className="absolute" style={{ inset: '8px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
+        <div className="absolute inset-0 rounded-[50%]" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div className="absolute inset-3">
 
           {/* Center logo */}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -339,9 +343,9 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
             return (
               <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center gap-1`}>
                 {/* Cards */}
-                <div className="flex relative" style={{ opacity: folded ? 0.15 : 0.85 }}>
+                <div className="flex relative" style={{ opacity: folded ? 0.3 : 1 }}>
                   {[1,2,3,4,5,6].map(n => (
-                    <div key={n} className="rounded-[3px] border" style={{ width: '12px', height: '18px', marginLeft: n === 1 ? 0 : '-6px', background: 'linear-gradient(135deg, #1a3a5c 0%, #0d2139 100%)', borderColor: 'rgba(255,255,255,0.15)' }} />
+                    <div key={n} className="rounded-[4px]" style={{ width: '11px', height: '17px', marginLeft: n === 1 ? 0 : '-5px', background: 'linear-gradient(145deg, #8b1a2a 0%, #5a0e1a 100%)', border: '1.5px solid #c43050', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
                   ))}
                 </div>
                   

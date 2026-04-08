@@ -1,62 +1,94 @@
 import React from 'react';
 import { Card as CardType } from '@/lib/poker';
 
-export function PlayingCard({ card, compact = false, revealed = true }: { card: CardType, compact?: boolean, revealed?: boolean }) {
-  const suitColors = {
-    s: 'text-black', 
-    h: 'text-[#e11d48]', // Vibrant Red
-    d: 'text-[#2563eb]', // Vibrant Blue
-    c: 'text-[#059669]'  // Vibrant Green
-  };
-  const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
+// CoinPoker-style colored card backgrounds per suit
+const SUIT_BG: Record<string, string> = {
+  s: 'linear-gradient(145deg, #1a6fd4 0%, #0d3f80 100%)',  // Blue for Spades
+  h: 'linear-gradient(145deg, #e8293a 0%, #9b0e1f 100%)',  // Red for Hearts
+  d: 'linear-gradient(145deg, #d44a1a 0%, #8b2800 100%)',  // Orange-Red for Diamonds
+  c: 'linear-gradient(145deg, #1d9444 0%, #0a5225 100%)',  // Green for Clubs
+};
 
+const SUIT_BORDER: Record<string, string> = {
+  s: '#3d8ef5',
+  h: '#f55566',
+  d: '#f57040',
+  c: '#3db866',
+};
+
+const SUIT_SYMBOLS: Record<string, string> = { s: '♠', h: '♥', d: '♦', c: '♣' };
+
+export function PlayingCard({ card, compact = false, revealed = true }: { card: CardType, compact?: boolean, revealed?: boolean }) {
   if (!revealed) {
     return (
-      <div className={`relative rounded-xl border-2 border-white/10 shadow-lg bg-slate-800 ${compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-20 sm:h-28 lg:w-24 lg:h-34'}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-transparent rounded-xl" />
-        <div className="absolute inset-1 border border-white/5 rounded-lg" />
+      <div
+        className={`relative shadow-xl flex-shrink-0 ${compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-[72px] sm:h-[100px]'}`}
+        style={{
+          borderRadius: '8px',
+          background: 'linear-gradient(145deg, #8b1a2a 0%, #5a0e1a 100%)',
+          border: '2px solid #c43050',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
+        }}
+      >
+        {/* Card back crosshatch pattern */}
+        <div className="absolute inset-[3px] rounded-[6px] opacity-30"
+          style={{ backgroundImage: 'repeating-linear-gradient(45deg, #fff 0, #fff 1px, transparent 0, transparent 50%), repeating-linear-gradient(-45deg, #fff 0, #fff 1px, transparent 0, transparent 50%)', backgroundSize: '8px 8px' }}
+        />
       </div>
     );
   }
 
-  // Adjusted sizes for even bigger indices
-  const baseSize = compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-20 sm:h-28 lg:w-24 lg:h-34';
-  const fontSize = compact ? 'text-xs' : 'text-base sm:text-2xl lg:text-3xl';
-  const centerSize = compact ? 'text-2xl' : 'text-4xl sm:text-6xl lg:text-8xl';
+  const baseSize = compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-[72px] sm:h-[100px]';
+  const rankSize = compact ? 'text-sm' : 'text-xl sm:text-2xl';
+  const suitSize = compact ? 'text-xs' : 'text-base sm:text-lg';
+  const centerSize = compact ? 'text-3xl' : 'text-5xl sm:text-6xl';
 
   return (
-    <div className={`bg-white relative rounded-xl border-2 border-slate-100 shadow-xl flex items-center justify-center font-black ${suitColors[card.suit]} ${baseSize}`}>
-      {/* Top Left Index - MASSIVE */}
-      <div className={`absolute top-1 left-1 flex flex-col items-center leading-none ${fontSize}`}>
-        <span className="tracking-tighter">{card.rank}</span>
-        <span className="-mt-0.5">{suitSymbols[card.suit]}</span>
+    <div
+      className={`relative flex-shrink-0 ${baseSize}`}
+      style={{
+        borderRadius: '9px',
+        background: SUIT_BG[card.suit],
+        border: `2px solid ${SUIT_BORDER[card.suit]}`,
+        boxShadow: '0 6px 20px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15)',
+      }}
+    >
+      {/* Top-left rank+suit */}
+      <div className={`absolute top-1 left-1.5 flex flex-col items-center leading-none font-black text-white ${rankSize}`}>
+        <span>{card.rank}</span>
+        <span className={suitSize}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
 
-      {/* Center Large Suit - SOLID COLOR, BOLD */}
-      <div className={`${centerSize} select-none`}>
-        {suitSymbols[card.suit]}
+      {/* Center large suit */}
+      <div className={`absolute inset-0 flex items-center justify-center font-black text-white select-none opacity-70 ${centerSize}`}>
+        {SUIT_SYMBOLS[card.suit]}
       </div>
 
-      {/* Bottom Right Index - flipped */}
-      <div className={`absolute bottom-1 right-1 flex flex-col items-center leading-none rotate-180 ${fontSize}`}>
-        <span className="tracking-tighter">{card.rank}</span>
-        <span className="-mt-0.5">{suitSymbols[card.suit]}</span>
+      {/* Bottom-right rank+suit (flipped) */}
+      <div className={`absolute bottom-1 right-1.5 flex flex-col items-center leading-none font-black rotate-180 text-white ${rankSize}`}>
+        <span>{card.rank}</span>
+        <span className={suitSize}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
+
+      {/* Subtle inner gloss */}
+      <div className="absolute inset-0 rounded-[7px] pointer-events-none"
+        style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.15) 0%, transparent 60%)' }}
+      />
     </div>
   );
 }
 
 export function InlineCard({ card }: { card: CardType }) {
-  const suitColors = { 
-    s: 'text-black', 
-    h: 'text-[#e11d48]', 
-    d: 'text-[#2563eb]', 
-    c: 'text-[#059669]' 
+  const suitColors: Record<string, string> = {
+    s: 'text-[#3d8ef5]',
+    h: 'text-[#f55566]',
+    d: 'text-[#f57040]',
+    c: 'text-[#3db866]',
   };
-  const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
   return (
-    <span className={`inline-flex items-center justify-center px-1 py-0.5 bg-white border border-slate-200 shadow-sm rounded font-black ${suitColors[card.suit]} text-[10px] sm:text-xs lg:text-sm w-6 sm:w-7 lg:w-9`}>
-      {card.rank}{suitSymbols[card.suit]}
+    <span className={`inline-flex items-center justify-center px-1 py-0.5 bg-[#0d1623] border rounded font-black ${suitColors[card.suit]} text-[10px] sm:text-xs w-6 sm:w-7`}
+      style={{ borderColor: SUIT_BORDER[card.suit] + '66' }}>
+      {card.rank}{SUIT_SYMBOLS[card.suit]}
     </span>
   );
 }
