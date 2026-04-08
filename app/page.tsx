@@ -4,14 +4,17 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase, getUserId } from '@/lib/supabase';
 import {
   Card as CardType, Position, Action, HandResult, SessionStats, TableState,
-  RFI_POSITIONS, dealHand, createTableState,
+  RFI_POSITIONS, createTableState,
 } from '@/lib/poker';
 import { PlayingCard, InlineCard } from '@/components/PlayingCard';
 import { PositionBadge } from '@/components/PositionBadge';
-import { Settings, BarChart3, History, Play, Layers, Target } from 'lucide-react';
+import { Settings, BarChart3, History, Play, Layers, Target, TrendingUp, Award } from 'lucide-react';
 
 type View = 'trainer' | 'drills' | 'analytics' | 'history' | 'settings';
 
+// ────────────────────────────────────────────────────────────────────────────
+// ROOT APP
+// ────────────────────────────────────────────────────────────────────────────
 export default function PLO6Trainer() {
   const [view, setView] = useState<View>('trainer');
   const [isPaused, setIsPaused] = useState(true);
@@ -19,22 +22,26 @@ export default function PLO6Trainer() {
   const [stats, setStats] = useState<SessionStats>({ total: 0, correct: 0, mistakes: [], history: [] });
   const [activePositions, setActivePositions] = useState<Position[]>([...RFI_POSITIONS]);
   const [activeDrill, setActiveDrill] = useState<string | null>(null);
+  const [streak, setStreak] = useState(0);
 
   useEffect(() => {
-    async function loadPersistentHistory() {
+    async function loadHistory() {
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return;
-      const { data } = await supabase.from('hand_history').select('*').eq('user_id', getUserId()).order('created_at', { ascending: false }).limit(100);
+      const { data } = await supabase
+        .from('hand_history').select('*')
+        .eq('user_id', getUserId())
+        .order('created_at', { ascending: false }).limit(100);
       if (data) {
         const formatted: HandResult[] = data.map(item => ({
           hand: item.hand, position: item.position, scenario: item.scenario || 'RFI',
-          percentile: item.percentile, tags: item.tags || [],
+          percentile: item.percentile, tags: item.tags || [], explanation: item.explanation || '',
           correctAction: item.correct_action, playerAction: item.player_action,
           isCorrect: item.is_correct, timestamp: new Date(item.created_at).getTime()
         }));
         setStats({ total: formatted.length, correct: formatted.filter(h => h.isCorrect).length, mistakes: formatted.filter(h => !h.isCorrect), history: formatted });
       }
     }
-    loadPersistentHistory();
+    loadHistory();
   }, []);
 
   const startSession = useCallback((drill: string | null = null) => {
@@ -47,15 +54,16 @@ export default function PLO6Trainer() {
   const makeDecision = useCallback(async (tableId: number, action: Action) => {
     const table = tables.find(t => t.id === tableId);
     if (!table || table.playerAction || table.showFeedback || !table.correctAction) return;
-    
+
     const isCorrect = action === table.correctAction;
     const result: HandResult = {
       hand: [...table.hand], position: table.position, scenario: table.scenario || 'RFI',
-      percentile: table.percentile!, tags: table.tags,
+      percentile: table.percentile!, tags: table.tags, explanation: table.explanation,
       correctAction: table.correctAction, playerAction: action,
       isCorrect, timestamp: Date.now()
     };
-    
+
+    setStreak(s => isCorrect ? s + 1 : 0);
     setStats(s => ({
       total: s.total + 1, correct: s.correct + (isCorrect ? 1 : 0),
       mistakes: isCorrect ? s.mistakes : [result, ...s.mistakes],
@@ -66,57 +74,112 @@ export default function PLO6Trainer() {
       try {
         const { error } = await supabase.from('hand_history').insert([{
           user_id: getUserId(), position: result.position, scenario: result.scenario || 'RFI',
-          hand: result.hand,
-          correct_action: result.correctAction, player_action: result.playerAction, is_correct: result.isCorrect
+          hand: result.hand, correct_action: result.correctAction,
+          player_action: result.playerAction, is_correct: result.isCorrect
         }]);
-        if (error) console.error('Failed to save hand history:', error);
+        if (error) console.error('Failed to save:', error);
       } catch (err) {
-        console.error('Network error saving hand history:', err);
+        console.error('Network error:', err);
       }
     }
 
     setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t));
-    
     const nextTable = createTableState(tableId, activePositions, activeDrill);
     setTimeout(() => {
       setTables(prev => prev.map(t => t.id === tableId ? nextTable : t));
-    }, 1600);
+    }, 2000);
   }, [tables, activePositions, activeDrill]);
 
+  const NAV = [
+    { v: 'trainer', icon: Play, label: 'Train' },
+    { v: 'drills', icon: Target, label: 'Drills' },
+    { v: 'analytics', icon: BarChart3, label: 'Stats' },
+    { v: 'history', icon: History, label: 'History' },
+    { v: 'settings', icon: Settings, label: 'Settings' },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-950 text-slate-100 overflow-hidden font-sans select-none">
-      
-      {/* 5-Icon Top Navigation */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900 z-50">
+    <div className="min-h-screen flex flex-col select-none" style={{ background: 'var(--bg-base)', color: 'var(--text-primary)', fontFamily: 'var(--font-sans)' }}>
+
+      {/* ── HEADER ── */}
+      <header className="flex items-center justify-between px-5 py-3 z-50" style={{ background: 'rgba(13,17,23,0.9)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
-            <Layers className="w-4 h-4 text-green-500" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--accent-dim)', border: '1px solid rgba(0,229,160,0.25)' }}>
+            <Layers className="w-4 h-4" style={{ color: 'var(--accent)' }} />
           </div>
-          <h1 className="text-base font-bold text-white">PLO6 <span className="text-green-500">Trainer v5</span></h1>
+          <div>
+            <h1 className="text-sm font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>PLO6 <span style={{ color: 'var(--accent)' }}>Trainer</span></h1>
+            <p className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>GTO-Calibrated · 5-Max</p>
+          </div>
         </div>
-        <nav className="flex items-center gap-1">
-          {[
-            { v: 'trainer', icon: Play }, { v: 'drills', icon: Target }, 
-            { v: 'analytics', icon: BarChart3 }, { v: 'history', icon: History }, 
-            { v: 'settings', icon: Settings }
-          ].map(({ v, icon: Icon }) => (
-            <button 
-              key={v} onClick={() => setView(v as View)} 
-              className={`p-2 rounded-xl transition-all active:scale-95 ${view === v ? 'bg-green-600 text-white' : 'text-zinc-400 hover:bg-zinc-800'}`}
+
+        {/* Streak badge */}
+        {streak >= 3 && (
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold" style={{ background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' }}>
+            <Award className="w-3 h-3" /> {streak} Streak
+          </div>
+        )}
+
+        <nav className="flex items-center gap-0.5">
+          {NAV.map(({ v, icon: Icon, label }) => (
+            <button
+              key={v} onClick={() => setView(v as View)}
+              className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all active:scale-95"
+              style={{
+                background: view === v ? 'var(--accent-dim)' : 'transparent',
+                color: view === v ? 'var(--accent)' : 'var(--text-muted)',
+                border: view === v ? '1px solid rgba(0,229,160,0.2)' : '1px solid transparent',
+              }}
             >
-              <Icon className="w-5 h-5" />
+              <Icon className="w-4 h-4" />
+              <span className="text-[9px] font-semibold uppercase tracking-widest hidden sm:block">{label}</span>
             </button>
           ))}
         </nav>
       </header>
 
-      <main className="flex-1 flex flex-col overflow-y-auto px-4 sm:px-8 py-6">
+      {/* ── MAIN ── */}
+      <main className="flex-1 flex flex-col overflow-y-auto">
         {view === 'trainer' && (
-          <div className="flex flex-col items-center justify-center w-full h-full max-w-5xl mx-auto space-y-8">
+          <div className="flex flex-col items-center justify-center w-full h-full max-w-5xl mx-auto py-6 px-4 sm:px-8" style={{ minHeight: 'calc(100vh - 64px)' }}>
             {isPaused ? (
-              <button onClick={() => startSession(null)} className="px-10 py-5 bg-green-600 rounded-2xl font-black text-2xl shadow-2xl hover:bg-green-500 hover:scale-105 transition-all active:scale-95">Start Session</button>
+              <div className="flex flex-col items-center gap-8 text-center">
+                <div>
+                  <h2 className="text-3xl sm:text-5xl font-black mb-3 tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    Take Your Seat
+                  </h2>
+                  <p className="text-sm sm:text-base max-w-md" style={{ color: 'var(--text-secondary)' }}>
+                    Train RFI decision-making across all 5-Max positions. GTO-calibrated grades, instant feedback.
+                  </p>
+                </div>
+                <button
+                  onClick={() => startSession(null)}
+                  className="px-10 py-4 rounded-2xl font-bold text-lg tracking-tight transition-all hover:scale-105 active:scale-95"
+                  style={{ background: 'var(--accent)', color: '#000', boxShadow: '0 0 30px var(--accent-glow)' }}
+                >
+                  Start Session
+                </button>
+                {stats.total > 0 && (
+                  <div className="flex gap-6 text-center">
+                    <div>
+                      <p className="text-2xl font-black" style={{ color: 'var(--accent)' }}>{Math.round((stats.correct / stats.total) * 100)}%</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Accuracy</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Hands</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-black" style={{ color: '#f87171' }}>{stats.mistakes.length}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Mistakes</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
-              tables.map(table => <PokerTable key={table.id} table={table} isActive={true} isPaused={isPaused} onDecision={(act: Action) => makeDecision(table.id, act)} />)
+              tables.map(table => (
+                <PokerTable key={table.id} table={table} isActive={true} isPaused={isPaused} onDecision={(act: Action) => makeDecision(table.id, act)} />
+              ))
             )}
           </div>
         )}
@@ -129,144 +192,211 @@ export default function PLO6Trainer() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════
-// POKER TABLE COMPONENT (The Engine)
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
+// POKER TABLE
+// ────────────────────────────────────────────────────────────────────────────
 function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableState, isActive: boolean, isPaused: boolean, onDecision: (act: Action) => void }) {
   const ACTION_ORDER = ['UTG', 'CO', 'BTN', 'SB', 'BB'];
   const heroActionIdx = ACTION_ORDER.indexOf(table.position);
-
-  // No animation state machine — canAct is always true when it's hero's turn and no action taken
   const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction;
 
-  const CLOCKWISE_POSITIONS = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
-  const heroIdx = CLOCKWISE_POSITIONS.indexOf(table.position);
-  
-  const opponentSeats = [
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 1) % 5], style: "bottom-[12%] sm:bottom-[20%] left-[2%]", chipStyle: "-top-6 sm:-top-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 2) % 5], style: "top-[8%] sm:top-[15%] left-[8%] sm:left-[15%]", chipStyle: "-bottom-6 sm:-bottom-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 3) % 5], style: "top-[8%] sm:top-[15%] right-[8%] sm:right-[15%]", chipStyle: "-bottom-6 sm:-bottom-8 left-1/2 -translate-x-1/2" },
-    { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[12%] sm:bottom-[20%] right-[2%]", chipStyle: "-top-6 sm:-top-8 left-1/2 -translate-x-1/2" },
+  const CLOCKWISE = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
+  const heroIdx = CLOCKWISE.indexOf(table.position);
+
+  const seats = [
+    { pos: CLOCKWISE[(heroIdx + 1) % 5], style: 'bottom-[10%] sm:bottom-[18%] left-[3%]' },
+    { pos: CLOCKWISE[(heroIdx + 2) % 5], style: 'top-[6%] sm:top-[12%] left-[10%] sm:left-[18%]' },
+    { pos: CLOCKWISE[(heroIdx + 3) % 5], style: 'top-[6%] sm:top-[12%] right-[10%] sm:right-[18%]' },
+    { pos: CLOCKWISE[(heroIdx + 4) % 5], style: 'bottom-[10%] sm:bottom-[18%] right-[3%]' },
   ];
 
-  // In RFI scenario, any player that acts BEFORE the hero has folded (lower UTG->BB index = earlier action)
-  const isFolded = (pos: string) => {
-    const posIdx = ACTION_ORDER.indexOf(pos);
-    return posIdx < heroActionIdx;
+  const isFolded = (pos: string) => ACTION_ORDER.indexOf(pos) < heroActionIdx;
+
+  const renderDealerButton = () => {
+    if (table.position === 'BTN') {
+      return (
+        <div className="absolute bottom-[30%] right-[37%] z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black" style={{ background: '#fff', border: '2px solid #e5e7eb' }}>D</div>
+      );
+    }
+    return seats.map((s, i) => s.pos === 'BTN' && (
+      <div key={`d-${i}`} className={`absolute z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black ${s.style}`}
+        style={{ background: '#fff', border: '2px solid #e5e7eb', transform: 'translate(36px, 20px)' }}>D</div>
+    ));
   };
 
-  const foldedCount = opponentSeats.filter(s => isFolded(s.pos)).length;
-
-
-  const renderChip = (amount: string) => (
-    <div className="flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 py-0.5 rounded-full z-20 shadow-lg animate-in fade-in zoom-in duration-300">
-      <div className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-red-400 to-red-700 border border-red-300/50"></div>
-      <span className="text-[10px] text-white font-bold">{amount}</span>
-    </div>
-  );
+  const isCorrect = table.playerAction === table.correctAction;
+  const percentileTier = (p?: number) => {
+    if (!p) return { label: '--', color: '#8892a4' };
+    if (p <= 10) return { label: 'Elite', color: '#00e5a0' };
+    if (p <= 25) return { label: 'Strong', color: '#34d399' };
+    if (p <= 45) return { label: 'Solid', color: '#fbbf24' };
+    if (p <= 65) return { label: 'Marginal', color: '#f97316' };
+    return { label: 'Weak', color: '#f87171' };
+  };
+  const tier = percentileTier(table.percentile);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[1100px] relative">
-      <div className="relative w-full aspect-[1.3/1] sm:aspect-[2.2/1] min-h-[300px] sm:min-h-[400px] rounded-[300px] p-2 bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl overflow-hidden border-zinc-700">
-        <div className="relative w-full h-full rounded-[250px] flex items-center justify-center border-4 border-zinc-800/80 overflow-hidden" style={{ background: 'radial-gradient(ellipse at center, #0f766e 0%, #064e3b 100%)' }}>
-          
-          {/* Dealer Button */}
-          {table.position === 'BTN' ? (
-            <div className="absolute bottom-[28%] sm:bottom-[32%] right-[38%] z-40 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-zinc-400 flex items-center justify-center shadow-lg animate-in fade-in zoom-in duration-500">
-               <span className="text-[10px] sm:text-xs font-black text-black leading-none">D</span>
-            </div>
-          ) : (
-            opponentSeats.map((seat, i) => seat.pos === 'BTN' && (
-              <div key={`d-${i}`} className={`absolute ${seat.style} z-40 -translate-x-8 sm:-translate-x-12 translate-y-4 sm:translate-y-6 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-zinc-400 flex items-center justify-center shadow-lg animate-in fade-in zoom-in duration-500`}>
-                 <span className="text-[10px] sm:text-xs font-black text-black leading-none">D</span>
-              </div>
-            ))
-          )}
+    <div className="flex flex-col items-center w-full max-w-[1100px] gap-4">
 
-          {(table.position === 'SB' || table.position === 'BB') && <div className="absolute bottom-[10%] sm:bottom-[12%] left-1/2 -translate-x-1/2 z-20">{renderChip(table.position === 'SB' ? '0.5' : '1')}</div>}
-          
-          {opponentSeats.map((seat, i) => {
-            const isRaiser = table.raiserPosition === seat.pos;
+      {/* ── TABLE FELT ── */}
+      <div className="relative w-full rounded-[80px] sm:rounded-[120px] shadow-2xl overflow-hidden" style={{ aspectRatio: '2.4 / 1', minHeight: '260px', background: '#0a1a14', border: '3px solid rgba(255,255,255,0.06)', boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+        {/* Outer ring */}
+        <div className="absolute inset-3 rounded-[70px] sm:rounded-[110px] felt" style={{ border: '2px solid rgba(255,255,255,0.04)' }}>
+
+          {/* Center logo */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-10" style={{ color: 'var(--accent)' }}>PLO6</div>
+          </div>
+
+          {renderDealerButton()}
+
+          {/* Opponent seats */}
+          {seats.map((seat, i) => {
             const folded = isFolded(seat.pos);
-            
             return (
-              <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center`}>
-                {isRaiser && <div className={`absolute ${seat.chipStyle}`}>{renderChip('3.5')}</div>}
-                {!isRaiser && !folded && (seat.pos === 'SB' || seat.pos === 'BB') && <div className={`absolute ${seat.chipStyle}`}>{renderChip(seat.pos === 'SB' ? '0.5' : '1')}</div>}
-                
-                <div 
-                  className={`flex -mb-2 sm:-mb-4 ${!folded ? 'scale-50 sm:scale-75' : ''}`}
-                  style={{ opacity: folded ? 0 : 0.8, visibility: folded ? 'hidden' : 'visible' }}
-                >
-                  {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
+              <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center gap-1`}>
+                {/* Cards */}
+                <div className="flex" style={{ opacity: folded ? 0.15 : 0.85 }}>
+                  {[1,2,3,4,5,6].map(n => (
+                    <div key={n} className="rounded-[3px] border" style={{ width: '12px', height: '18px', marginLeft: n === 1 ? 0 : '-6px', background: 'linear-gradient(135deg, #1a3a5c 0%, #0d2139 100%)', borderColor: 'rgba(255,255,255,0.15)' }} />
+                  ))}
                 </div>
-                
-                <div className={`relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 py-0.5 text-center shadow-xl z-20 ${isRaiser ? 'ring-2 ring-red-500' : ''} ${folded ? 'opacity-25' : 'opacity-100'}`}>
-                  <span className="text-[9px] font-medium text-zinc-100">{seat.pos}{folded ? ' ✗' : ''}</span>
+                {/* Name tag */}
+                <div className="px-2 py-0.5 rounded text-[9px] font-bold" style={{
+                  background: folded ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: folded ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
+                }}>
+                  {seat.pos}{folded ? ' ×' : ''}
                 </div>
               </div>
             );
           })}
 
+          {/* Feedback overlay */}
           {table.showFeedback && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-6 sm:p-8 rounded-[32px] backdrop-blur-xl border border-white/20 shadow-2xl bg-black/70 animate-in zoom-in duration-300">
-              <span className={`font-black text-2xl sm:text-4xl uppercase tracking-[0.2em] mb-4 ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
-                {table.playerAction === table.correctAction ? 'Perfect' : 'Mistake'}
-              </span>
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-zinc-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Hand Strength</span>
-                <span className="text-white text-2xl sm:text-3xl font-mono font-black">{table.percentile?.toFixed(1)}%</span>
-              </div>
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {table.tags.map(tag => (
-                  <span key={tag} className="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-[10px] sm:text-xs font-black text-zinc-300 uppercase letter-spacing-wide">{tag}</span>
-                ))}
+            <div className="absolute inset-0 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(8px)', background: 'rgba(8,11,16,0.75)' }}>
+              <div className="flex flex-col items-center gap-4 px-8 py-6 rounded-3xl text-center" style={{ background: 'rgba(13,17,23,0.9)', border: `1px solid ${isCorrect ? 'rgba(0,229,160,0.3)' : 'rgba(248,113,113,0.3)'}`, boxShadow: `0 0 40px ${isCorrect ? 'rgba(0,229,160,0.15)' : 'rgba(248,113,113,0.15)'}` }}>
+                <div className="text-2xl sm:text-3xl font-black uppercase tracking-widest" style={{ color: isCorrect ? 'var(--accent)' : '#f87171' }}>
+                  {isCorrect ? 'Correct' : 'Mistake'}
+                </div>
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-muted)' }}>Hand Strength</span>
+                  <span className="text-3xl font-black font-mono" style={{ color: tier.color }}>{table.percentile?.toFixed(0)}%</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${tier.color}15`, color: tier.color }}>{tier.label}</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 justify-center max-w-xs">
+                  {table.tags.map(tag => (
+                    <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>{tag}</span>
+                  ))}
+                </div>
+                <p className="text-xs leading-relaxed max-w-xs" style={{ color: 'var(--text-secondary)' }}>{table.explanation}</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      <div className="relative z-30 mt-2 sm:mt-4 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
-        <div className="flex justify-center items-center h-[120px] w-full gap-0">
+      {/* ── HERO HAND ── */}
+      <div className="flex flex-col items-center gap-3 w-full">
+        <div className="flex justify-center items-end gap-0">
           {table.hand.map((c: CardType, i: number) => (
-             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*3}deg) translateY(${Math.abs(i-2.5)*4}px)`, zIndex: i, marginLeft: i===0?0:'-0.75rem' }}>
-                <PlayingCard card={c} revealed={true} />
-             </div>
+            <div key={i} className="relative" style={{ transform: `rotate(${(i - 2.5) * 3}deg) translateY(${Math.abs(i - 2.5) * 3}px)`, zIndex: i, marginLeft: i === 0 ? 0 : '-10px' }}>
+              <PlayingCard card={c} revealed={true} />
+            </div>
           ))}
         </div>
-        <div className={`relative z-40 mt-[-5px] bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-6 py-1 shadow-2xl text-center ring-2 ring-yellow-400 bg-zinc-800`}>
-            <span className="text-zinc-200 text-xs font-medium block">{table.position} (You)</span>
+
+        {/* Hero label */}
+        <div className="flex items-center gap-2 px-5 py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
+          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
         </div>
       </div>
 
-      <div className="mt-4 sm:mt-10 w-full max-w-[600px] flex gap-3 px-2">
-        <button onClick={() => onDecision('fold')} disabled={!canAct} className={`flex-1 py-4 rounded-xl border-b-[6px] font-black text-lg sm:text-xl text-white transition-all ${canAct ? 'bg-rose-600 border-rose-800 hover:bg-rose-500 active:border-b-0 active:translate-y-1.5' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Fold</button>
-        <button onClick={() => onDecision('raise')} disabled={!canAct} className={`flex-1 py-4 rounded-xl border-b-[6px] font-black text-lg sm:text-xl text-white transition-all ${canAct ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500 active:border-b-0 active:translate-y-1.5' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Raise</button>
+      {/* ── ACTION BUTTONS ── */}
+      <div className="flex gap-3 w-full max-w-md">
+        <button
+          onClick={() => onDecision('fold')}
+          disabled={!canAct}
+          className="flex-1 py-4 rounded-2xl font-bold text-base sm:text-lg tracking-tight transition-all active:scale-95"
+          style={{
+            background: canAct ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
+            border: canAct ? '1px solid rgba(248,113,113,0.35)' : '1px solid rgba(255,255,255,0.05)',
+            color: canAct ? '#f87171' : 'var(--text-muted)',
+            boxShadow: canAct ? '0 0 20px rgba(248,113,113,0.1)' : 'none',
+          }}
+        >
+          Fold
+        </button>
+        <button
+          onClick={() => onDecision('raise')}
+          disabled={!canAct}
+          className="flex-1 py-4 rounded-2xl font-bold text-base sm:text-lg tracking-tight transition-all active:scale-95"
+          style={{
+            background: canAct ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
+            border: canAct ? '1px solid rgba(0,229,160,0.5)' : '1px solid rgba(255,255,255,0.05)',
+            color: canAct ? '#000' : 'var(--text-muted)',
+            boxShadow: canAct ? '0 0 24px var(--accent-glow)' : 'none',
+          }}
+        >
+          Raise
+        </button>
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
 // DRILLS VIEW
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
 function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: string) => void }) {
   const drills = [
-    { name: "The Premiums", desc: "Top 5% AA, KK, & High Rundowns", color: "from-amber-500/20 to-amber-900/20", border: "border-amber-500/50" },
-    { name: "The Traps", desc: "Naked Kings, Danglers, Weak Aces", color: "from-red-500/20 to-red-900/20", border: "border-red-500/50" },
-    { name: "Connectors", desc: "Mid & Weak Rundown Playability", color: "from-blue-500/20 to-blue-900/20", border: "border-blue-500/50" },
+    {
+      name: 'The Premiums',
+      desc: 'Train recognition of top-tier hands: AA DS, KK DS, high rundowns. Develop the instinct to raise instantly.',
+      tier: 'Top 8%',
+      accent: '#00e5a0',
+      bg: 'rgba(0,229,160,0.05)',
+      border: 'rgba(0,229,160,0.2)',
+    },
+    {
+      name: 'The Traps',
+      desc: 'Learn to fold dangerous hands: bare rainbow Aces, Kings without suitedness, 6th-card danglers.',
+      tier: 'Danger Zone',
+      accent: '#f87171',
+      bg: 'rgba(248,113,113,0.05)',
+      border: 'rgba(248,113,113,0.2)',
+    },
+    {
+      name: 'Connectors',
+      desc: 'Master double-suited rundowns and wrap-potential hands — the bread and butter of PLO6.',
+      tier: 'Mid-High',
+      accent: '#60a5fa',
+      bg: 'rgba(96,165,250,0.05)',
+      border: 'rgba(96,165,250,0.2)',
+    },
   ];
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-2">Drill Library</h2>
-      <p className="text-xs text-zinc-400 mb-6">Proactively target specific hand archetypes.</p>
-      <div className="grid grid-cols-1 gap-3">
+    <div className="p-4 sm:p-8 max-w-2xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-black mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>Drill Library</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Target specific hand archetypes to close your leaks faster.</p>
+      </div>
+      <div className="flex flex-col gap-3">
         {drills.map(drill => (
-          <button key={drill.name} onClick={() => onSelectDrill(drill.name)} className={`w-full text-left p-5 rounded-2xl bg-gradient-to-br ${drill.color} border ${drill.border} active:scale-95 transition-all`}>
-            <h3 className="text-lg font-bold text-white mb-1">{drill.name}</h3>
-            <p className="text-xs text-zinc-300">{drill.desc}</p>
+          <button
+            key={drill.name}
+            onClick={() => onSelectDrill(drill.name)}
+            className="w-full text-left p-5 rounded-2xl transition-all active:scale-95 hover:brightness-110"
+            style={{ background: drill.bg, border: `1px solid ${drill.border}` }}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-base font-black" style={{ color: drill.accent }}>{drill.name}</h3>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: `${drill.accent}20`, color: drill.accent }}>{drill.tier}</span>
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{drill.desc}</p>
           </button>
         ))}
       </div>
@@ -274,118 +404,218 @@ function DrillsView({ onSelectDrill }: { onSelectDrill: (drill: string) => void 
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
 // ANALYTICS VIEW
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
 function AnalyticsView({ stats }: { stats: SessionStats }) {
   const winRate = stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0;
-  
+  const rateColor = winRate >= 80 ? '#00e5a0' : winRate >= 60 ? '#fbbf24' : '#f87171';
+
+  // Breakdown by position
+  const byPosition = ['UTG', 'CO', 'BTN', 'SB'].map(pos => {
+    const posHands = stats.history.filter(h => h.position === pos);
+    const posCorrect = posHands.filter(h => h.isCorrect).length;
+    return { pos, total: posHands.length, correct: posCorrect, rate: posHands.length > 0 ? Math.round((posCorrect / posHands.length) * 100) : null };
+  });
+
+  // Tag-based mistake analysis
+  const tagMistakes: Record<string, number> = {};
+  stats.mistakes.forEach(m => {
+    m.tags?.forEach(tag => { tagMistakes[tag] = (tagMistakes[tag] || 0) + 1; });
+  });
+  const topLeaks = Object.entries(tagMistakes).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
   return (
-    <div className="p-4 space-y-4">
-      <h2 className="text-xl font-bold mb-2">Session Analytics</h2>
-      
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 flex flex-col items-center justify-center">
-        <span className="text-sm text-zinc-400 uppercase tracking-widest font-bold mb-2">Overall Accuracy</span>
-        <span className={`text-6xl font-black ${winRate >= 80 ? 'text-green-500' : winRate >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>
-          {winRate}%
-        </span>
-        <span className="text-xs text-zinc-500 mt-2">{stats.correct} correct out of {stats.total} hands</span>
+    <div className="p-4 sm:p-8 max-w-3xl mx-auto space-y-5">
+      <div className="mb-6">
+        <h2 className="text-2xl font-black mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>Session Analytics</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Data-driven breakdown of your decision quality.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-4">
-         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <span className="text-xs text-zinc-400 block mb-1">Passives</span>
-            <span className="text-xl font-bold text-red-400">12 Mistakes</span>
-         </div>
-         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-            <span className="text-xs text-zinc-400 block mb-1">Aggression</span>
-            <span className="text-xl font-bold text-blue-400">8 Punts</span>
-         </div>
+      {/* Overall accuracy */}
+      <div className="p-6 sm:p-8 rounded-3xl text-center" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+        <p className="text-xs uppercase tracking-widest font-semibold mb-3" style={{ color: 'var(--text-muted)' }}>Overall Accuracy</p>
+        <p className="text-7xl font-black font-mono leading-none mb-2" style={{ color: rateColor }}>{winRate}%</p>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{stats.correct} correct · {stats.total - stats.correct} errors · {stats.total} total</p>
+        <div className="mt-4 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${winRate}%`, background: rateColor }} />
+        </div>
       </div>
-    </div>
-  );
-}
 
-// ═══════════════════════════════════════════════════════════
-// HISTORY VIEW
-// ═══════════════════════════════════════════════════════════
-function HistoryView({ history }: { history: HandResult[] }) {
-  return (
-    <div className="p-4 sm:p-8 space-y-4 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-black text-white">Hand History</h2>
-        <span className="text-xs text-zinc-500 uppercase font-black tracking-widest">{history.length} Hands</span>
-      </div>
-      {history.map((hand, i) => (
-        <div key={i} className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl border border-zinc-800/50 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-zinc-800/50 transition-colors">
-          <div className="flex items-center gap-4">
-            <PositionBadge position={hand.position} />
-            <div className="flex gap-1 sm:gap-1.5">
-              {(Array.isArray(hand.hand) ? hand.hand : []).map((c, idx) => <InlineCard key={idx} card={c} />)}
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between lg:justify-end gap-6 w-full lg:w-auto overflow-hidden">
-            <div className="flex flex-col min-w-[70px]">
-              <span className="text-[10px] text-zinc-500 uppercase font-black tracking-wider">Grade</span>
-              <span className={`text-sm font-mono font-black ${hand.percentile !== undefined && hand.percentile <= 20 ? 'text-green-400' : 'text-zinc-300'}`}>
-                {hand.percentile !== undefined && hand.percentile !== null ? `${hand.percentile.toFixed(1)}%` : '--'}
-              </span>
-            </div>
-
-            <div className="flex flex-col min-w-[100px]">
-              <span className="text-[10px] text-zinc-500 uppercase font-black tracking-wider">Decision</span>
-              <div className="flex items-center gap-2">
-                <span className={`text-sm font-black uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
-                {!hand.isCorrect && hand.correctAction && (
-                  <>
-                    <span className="text-zinc-600">→</span>
-                    <span className="text-sm font-black uppercase text-zinc-400">{hand.correctAction}</span>
-                  </>
-                )}
+      {/* Position breakdown */}
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Accuracy by Position</h3>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          {byPosition.map(({ pos, total, rate }) => (
+            <div key={pos} className="flex items-center justify-between px-5 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-black uppercase px-2.5 py-1 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--text-primary)' }}>{pos}</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{total} hands</span>
               </div>
-            </div>
-
-            <div className="hidden md:flex flex-wrap gap-1.5 max-w-[200px] justify-end">
-              {hand.tags && hand.tags.length > 0 ? (
-                hand.tags.map(tag => <span key={tag} className="text-[10px] px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 font-bold whitespace-nowrap">{tag}</span>)
+              {rate !== null ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                    <div className="h-full rounded-full" style={{ width: `${rate}%`, background: rate >= 75 ? '#00e5a0' : rate >= 50 ? '#fbbf24' : '#f87171' }} />
+                  </div>
+                  <span className="text-sm font-bold w-10 text-right" style={{ color: rate >= 75 ? '#00e5a0' : rate >= 50 ? '#fbbf24' : '#f87171' }}>{rate}%</span>
+                </div>
               ) : (
-                <span className="text-[10px] text-zinc-600">Legacy</span>
+                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>No data</span>
               )}
             </div>
-          </div>
+          ))}
         </div>
-      ))}
+      </div>
+
+      {/* Top leaks */}
+      {topLeaks.length > 0 && (
+        <div className="p-5 rounded-2xl" style={{ background: 'rgba(248,113,113,0.05)', border: '1px solid rgba(248,113,113,0.15)' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-4 h-4" style={{ color: '#f87171' }} />
+            <h3 className="text-sm font-bold" style={{ color: '#f87171' }}>Leak Analysis</h3>
+          </div>
+          <div className="space-y-2">
+            {topLeaks.map(([tag, count]) => (
+              <div key={tag} className="flex items-center justify-between">
+                <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>{tag}</span>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}>{count} errors</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] mt-4 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            Use the Drills tab to target these specific hand types.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
+// HISTORY VIEW
+// ────────────────────────────────────────────────────────────────────────────
+function HistoryView({ history }: { history: HandResult[] }) {
+  return (
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Hand History</h2>
+        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{history.length} Hands</span>
+      </div>
+
+      {history.length === 0 && (
+        <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>
+          <p className="text-sm">No hands played yet. Start a session to build your history.</p>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {history.map((hand, i) => {
+          const tier = hand.percentile <= 10 ? '#00e5a0' : hand.percentile <= 30 ? '#34d399' : hand.percentile <= 55 ? '#fbbf24' : '#f87171';
+          return (
+            <div key={i}
+              className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-4 sm:px-5 py-4 rounded-2xl transition-colors"
+              style={{ background: 'var(--bg-card)', border: `1px solid ${hand.isCorrect ? 'rgba(255,255,255,0.05)' : 'rgba(248,113,113,0.12)'}` }}
+            >
+              {/* Left: position + cards */}
+              <div className="flex items-center gap-3 min-w-0">
+                <PositionBadge position={hand.position} />
+                <div className="flex gap-1 flex-wrap">
+                  {(Array.isArray(hand.hand) ? hand.hand : []).map((c, idx) => (
+                    <InlineCard key={idx} card={c} />
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: grade + decision + tags */}
+              <div className="flex items-center gap-5 lg:gap-6 justify-between lg:justify-end w-full lg:w-auto flex-wrap">
+                {/* Grade */}
+                <div className="flex flex-col">
+                  <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-muted)' }}>Grade</span>
+                  <span className="text-sm font-black font-mono" style={{ color: tier }}>
+                    {hand.percentile !== undefined ? `${hand.percentile.toFixed(0)}%` : '--'}
+                  </span>
+                </div>
+
+                {/* Decision */}
+                <div className="flex flex-col">
+                  <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-muted)' }}>Decision</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-black uppercase" style={{ color: hand.isCorrect ? '#00e5a0' : '#f87171' }}>{hand.playerAction}</span>
+                    {!hand.isCorrect && hand.correctAction && (
+                      <>
+                        <span style={{ color: 'var(--text-muted)' }}>→</span>
+                        <span className="text-sm font-black uppercase" style={{ color: 'rgba(255,255,255,0.5)' }}>{hand.correctAction}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Tags */}
+                <div className="hidden md:flex flex-wrap gap-1.5 max-w-[180px] justify-end">
+                  {hand.tags?.map(tag => (
+                    <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full font-semibold whitespace-nowrap" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>{tag}</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // SETTINGS VIEW
-// ═══════════════════════════════════════════════════════════
+// ────────────────────────────────────────────────────────────────────────────
 function SettingsView({ activePositions, setActivePositions }: { activePositions: Position[], setActivePositions: (p: Position[]) => void }) {
+  const POS_INFO: Record<string, { threshold: string; desc: string }> = {
+    UTG: { threshold: 'Top 15%', desc: 'Tightest range — only premiums' },
+    CO:  { threshold: 'Top 28%', desc: 'Widen with position advantage' },
+    BTN: { threshold: 'Top 55%', desc: 'Widest open range in PLO6' },
+    SB:  { threshold: 'Top 42%', desc: 'Balanced vs BB 3-bet pressure' },
+  };
+
   const togglePosition = (pos: Position) => {
     if (activePositions.includes(pos) && activePositions.length > 1) {
-      setActivePositions(activePositions.filter((p: Position) => p !== pos));
+      setActivePositions(activePositions.filter(p => p !== pos));
     } else if (!activePositions.includes(pos)) {
       setActivePositions([...activePositions, pos]);
     }
   };
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">Trainer Settings</h2>
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 mb-4">
-        <h3 className="text-sm font-bold text-zinc-300 mb-3">Active Positions</h3>
-        <div className="flex flex-wrap gap-2">
-          {['UTG', 'CO', 'BTN', 'SB'].map(pos => (
-            <button 
-              key={pos} onClick={() => togglePosition(pos as Position)}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activePositions.includes(pos as Position) ? 'bg-green-600 text-white' : 'bg-zinc-800 text-zinc-500'}`}
-            >
-              {pos}
-            </button>
-          ))}
+    <div className="p-4 sm:p-8 max-w-xl mx-auto">
+      <div className="mb-8">
+        <h2 className="text-2xl font-black mb-1 tracking-tight" style={{ color: 'var(--text-primary)' }}>Settings</h2>
+        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Configure which positions to drill.</p>
+      </div>
+
+      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--border)', background: 'var(--bg-card)' }}>
+        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Active Positions</h3>
+        </div>
+        <div className="divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
+          {(['UTG', 'CO', 'BTN', 'SB'] as Position[]).map(pos => {
+            const active = activePositions.includes(pos);
+            const info = POS_INFO[pos];
+            return (
+              <button key={pos} onClick={() => togglePosition(pos)} className="w-full flex items-center justify-between px-5 py-4 transition-colors hover:brightness-110 text-left">
+                <div>
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-sm font-black" style={{ color: active ? 'var(--accent)' : 'var(--text-primary)' }}>{pos}</span>
+                    <span className="text-[10px] px-2 py-0.5 rounded font-bold" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)' }}>{info.threshold}</span>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{info.desc}</p>
+                </div>
+                <div className="w-10 h-6 rounded-full relative flex-shrink-0 transition-colors" style={{ background: active ? 'var(--accent-dim)' : 'rgba(255,255,255,0.06)', border: `1px solid ${active ? 'rgba(0,229,160,0.3)' : 'rgba(255,255,255,0.08)'}` }}>
+                  <div className="absolute top-0.5 h-5 w-5 rounded-full transition-all" style={{ left: active ? 'calc(100% - 22px)' : '2px', background: active ? 'var(--accent)' : 'rgba(255,255,255,0.2)' }} />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
