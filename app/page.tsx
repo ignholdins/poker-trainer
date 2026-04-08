@@ -265,10 +265,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
   const heroIdx = CLOCKWISE.indexOf(table.position);
 
   const seats = [
-    { pos: CLOCKWISE[(heroIdx + 1) % 5], style: 'bottom-[10%] sm:bottom-[18%] left-[3%]' },
-    { pos: CLOCKWISE[(heroIdx + 2) % 5], style: 'top-[6%] sm:top-[12%] left-[10%] sm:left-[18%]' },
-    { pos: CLOCKWISE[(heroIdx + 3) % 5], style: 'top-[6%] sm:top-[12%] right-[10%] sm:right-[18%]' },
-    { pos: CLOCKWISE[(heroIdx + 4) % 5], style: 'bottom-[10%] sm:bottom-[18%] right-[3%]' },
+    { pos: CLOCKWISE[(heroIdx + 1) % 5], style: 'bottom-[12%] left-[8%]' },
+    { pos: CLOCKWISE[(heroIdx + 2) % 5], style: 'top-[8%] left-[18%]' },
+    { pos: CLOCKWISE[(heroIdx + 3) % 5], style: 'top-[8%] right-[18%]' },
+    { pos: CLOCKWISE[(heroIdx + 4) % 5], style: 'bottom-[12%] right-[8%]' },
   ];
 
   const isFolded = (pos: string) => ACTION_ORDER.indexOf(pos) < heroActionIdx;
@@ -360,14 +360,9 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                   </div>
                   
                   {(isSB || isBB) && (
-                    <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold text-[7px] border-[1px] shadow-sm animate-in zoom-in" 
-                         style={{ 
-                           background: isSB ? 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)' : 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)',
-                           borderColor: isSB ? '#93c5fd' : '#fca5a5',
-                           color: 'white',
-                           borderStyle: 'dashed'
-                         }}>
-                      {isSB ? '.5' : '1'}
+                    <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold text-[7px] border shadow-sm animate-in zoom-in"
+                         style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderColor: 'rgba(240,100,100,0.5)', color: 'white' }}>
+                      {isSB ? 'SB' : 'BB'}
                     </div>
                   )}
                 </div>
@@ -434,10 +429,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         {/* Hero position badge — chip embedded inside it */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
           {table.position === 'SB' && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-blue-300 shadow" style={{ background: 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)', borderStyle: 'dashed', color: 'white' }}>0.5</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-400/60 shadow" style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderStyle: 'solid', color: 'white' }}>SB</div>
           )}
           {table.position === 'BB' && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-300 shadow" style={{ background: 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)', borderStyle: 'dashed', color: 'white' }}>1</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-400/60 shadow" style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderStyle: 'solid', color: 'white' }}>BB</div>
           )}
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
           <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
