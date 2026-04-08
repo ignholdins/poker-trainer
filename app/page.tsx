@@ -210,7 +210,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
                 {isRaiser && <div className={`absolute ${seat.chipStyle}`}>{renderChip('3.5')}</div>}
                 {!isRaiser && !folded && (seat.pos === 'SB' || seat.pos === 'BB') && <div className={`absolute ${seat.chipStyle}`}>{renderChip(seat.pos === 'SB' ? '0.5' : '1')}</div>}
                 
-                <div className={`flex -mb-2 sm:-mb-4 transition-all duration-500 origin-center ${folded ? 'opacity-0 scale-0' : 'opacity-80 scale-50 sm:scale-75'} ${thinking ? '-translate-y-2' : ''}`}>
+                <div 
+                  className={`flex -mb-2 sm:-mb-4 transition-all duration-500 origin-center ${!folded ? 'scale-50 sm:scale-75' : ''} ${thinking ? '-translate-y-2' : ''}`}
+                  style={{ opacity: folded ? 0 : 0.8, transform: folded ? 'scale(0) translateY(-20px)' : undefined, pointerEvents: folded ? 'none' : 'auto' }}
+                >
                   {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
                 </div>
                 
