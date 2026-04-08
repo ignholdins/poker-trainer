@@ -109,11 +109,11 @@ export default function PLO6Trainer() {
         </nav>
       </header>
 
-      <main className="flex-1 flex flex-col overflow-y-auto">
+      <main className="flex-1 flex flex-col overflow-y-auto px-4 sm:px-8 py-6">
         {view === 'trainer' && (
-          <div className="flex flex-col items-center justify-center p-4 w-full h-full max-w-md mx-auto">
+          <div className="flex flex-col items-center justify-center w-full h-full max-w-5xl mx-auto space-y-8">
             {isPaused ? (
-              <button onClick={() => startSession(null)} className="px-8 py-4 bg-green-600 rounded-xl font-bold text-xl shadow-lg hover:bg-green-500 transition-colors">Start Session</button>
+              <button onClick={() => startSession(null)} className="px-10 py-5 bg-green-600 rounded-2xl font-black text-2xl shadow-2xl hover:bg-green-500 hover:scale-105 transition-all active:scale-95">Start Session</button>
             ) : (
               tables.map(table => <PokerTable key={table.id} table={table} isActive={true} isPaused={isPaused} onDecision={(act: Action) => makeDecision(table.id, act)} />)
             )}
@@ -195,8 +195,8 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
   );
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[850px] relative">
-      <div className="relative w-full aspect-[1.5/1] sm:aspect-[2.2/1] min-h-[220px] rounded-[300px] p-2 bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl overflow-hidden border-zinc-700">
+    <div className="flex flex-col items-center w-full max-w-[1100px] relative">
+      <div className="relative w-full aspect-[1.3/1] sm:aspect-[2.2/1] min-h-[300px] sm:min-h-[400px] rounded-[300px] p-2 bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl overflow-hidden border-zinc-700">
         <div className="relative w-full h-full rounded-[250px] flex items-center justify-center border-4 border-zinc-800/80 overflow-hidden" style={{ background: 'radial-gradient(ellipse at center, #0f766e 0%, #064e3b 100%)' }}>
           
           <div className="absolute top-4 w-full text-center z-50">
@@ -232,10 +232,19 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
           })}
 
           {table.showFeedback && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-4 rounded-2xl backdrop-blur-md border border-white/20 shadow-2xl bg-black/60">
-              <span className={`font-black text-xl uppercase tracking-widest mb-2 ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex flex-col items-center justify-center p-6 sm:p-8 rounded-[32px] backdrop-blur-xl border border-white/20 shadow-2xl bg-black/70 animate-in zoom-in duration-300">
+              <span className={`font-black text-2xl sm:text-4xl uppercase tracking-[0.2em] mb-4 ${table.playerAction === table.correctAction ? 'text-green-500' : 'text-red-500'}`}>
                 {table.playerAction === table.correctAction ? 'Perfect' : 'Mistake'}
               </span>
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-zinc-400 text-xs sm:text-sm font-bold uppercase tracking-widest">Hand Strength</span>
+                <span className="text-white text-2xl sm:text-3xl font-mono font-black">{table.percentile?.toFixed(1)}%</span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                {table.tags.map(tag => (
+                  <span key={tag} className="px-3 py-1 bg-white/10 border border-white/10 rounded-full text-[10px] sm:text-xs font-black text-zinc-300 uppercase letter-spacing-wide">{tag}</span>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -254,9 +263,9 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         </div>
       </div>
 
-      <div className="mt-2 sm:mt-6 w-full max-w-[500px] flex gap-2 px-2">
-        <button onClick={() => onDecision('fold')} disabled={!canAct} className={`flex-1 py-3 rounded-lg border-b-4 font-bold text-white transition-all ${canAct ? 'bg-rose-600 border-rose-800 hover:bg-rose-500 active:border-b-0 active:translate-y-1' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Fold</button>
-        <button onClick={() => onDecision('raise')} disabled={!canAct} className={`flex-1 py-3 rounded-lg border-b-4 font-bold text-white transition-all ${canAct ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500 active:border-b-0 active:translate-y-1' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Raise</button>
+      <div className="mt-4 sm:mt-10 w-full max-w-[600px] flex gap-3 px-2">
+        <button onClick={() => onDecision('fold')} disabled={!canAct} className={`flex-1 py-4 rounded-xl border-b-[6px] font-black text-lg sm:text-xl text-white transition-all ${canAct ? 'bg-rose-600 border-rose-800 hover:bg-rose-500 active:border-b-0 active:translate-y-1.5' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Fold</button>
+        <button onClick={() => onDecision('raise')} disabled={!canAct} className={`flex-1 py-4 rounded-xl border-b-[6px] font-black text-lg sm:text-xl text-white transition-all ${canAct ? 'bg-emerald-600 border-emerald-800 hover:bg-emerald-500 active:border-b-0 active:translate-y-1.5' : 'bg-zinc-700 border-zinc-800 text-zinc-500'}`}>Raise</button>
       </div>
     </div>
   );
@@ -325,43 +334,46 @@ function AnalyticsView({ stats }: { stats: SessionStats }) {
 // ═══════════════════════════════════════════════════════════
 function HistoryView({ history }: { history: HandResult[] }) {
   return (
-    <div className="p-4 space-y-3">
-      <h2 className="text-xl font-bold mb-4">Hand History</h2>
+    <div className="p-4 sm:p-8 space-y-4 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-black text-white">Hand History</h2>
+        <span className="text-xs text-zinc-500 uppercase font-black tracking-widest">{history.length} Hands</span>
+      </div>
       {history.map((hand, i) => (
-        <div key={i} className="bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+        <div key={i} className="bg-zinc-900/50 backdrop-blur-sm rounded-2xl border border-zinc-800/50 p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 hover:bg-zinc-800/50 transition-colors">
+          <div className="flex items-center gap-4">
             <PositionBadge position={hand.position} />
-            <div className="flex gap-0.5 sm:gap-1">
+            <div className="flex gap-1 sm:gap-1.5">
               {(Array.isArray(hand.hand) ? hand.hand : []).map((c, idx) => <InlineCard key={idx} card={c} />)}
             </div>
           </div>
           
-          <div className="flex items-center justify-between xl:justify-end gap-4 w-full xl:w-auto overflow-hidden">
-            <div className="flex flex-col min-w-[60px]">
-              <span className="text-[9px] text-zinc-500 uppercase font-bold">Grade</span>
-              <span className="text-xs font-mono font-bold text-zinc-300">
-                {hand.percentile !== undefined && hand.percentile !== null ? `${hand.percentile.toFixed(1)}%` : 'N/A'}
+          <div className="flex items-center justify-between lg:justify-end gap-6 w-full lg:w-auto overflow-hidden">
+            <div className="flex flex-col min-w-[70px]">
+              <span className="text-[10px] text-zinc-500 uppercase font-black tracking-wider">Grade</span>
+              <span className={`text-sm font-mono font-black ${hand.percentile !== undefined && hand.percentile <= 20 ? 'text-green-400' : 'text-zinc-300'}`}>
+                {hand.percentile !== undefined && hand.percentile !== null ? `${hand.percentile.toFixed(1)}%` : '--'}
               </span>
             </div>
 
-            <div className="flex flex-col min-w-[80px]">
-              <span className="text-[9px] text-zinc-500 uppercase font-bold">Action</span>
-              <div className="flex items-center gap-1.5">
-                <span className={`text-xs font-bold uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
+            <div className="flex flex-col min-w-[100px]">
+              <span className="text-[10px] text-zinc-500 uppercase font-black tracking-wider">Decision</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-black uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
                 {!hand.isCorrect && hand.correctAction && (
                   <>
-                    <span className="text-[10px] text-zinc-500">→</span>
-                    <span className="text-xs font-bold uppercase text-zinc-300">{hand.correctAction}</span>
+                    <span className="text-zinc-600">→</span>
+                    <span className="text-sm font-black uppercase text-zinc-400">{hand.correctAction}</span>
                   </>
                 )}
               </div>
             </div>
 
-            <div className="hidden sm:flex flex-wrap gap-1 max-w-[150px] justify-end">
+            <div className="hidden md:flex flex-wrap gap-1.5 max-w-[200px] justify-end">
               {hand.tags && hand.tags.length > 0 ? (
-                hand.tags.map(tag => <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300 whitespace-nowrap">{tag}</span>)
+                hand.tags.map(tag => <span key={tag} className="text-[10px] px-2 py-0.5 bg-zinc-800 border border-zinc-700 rounded-full text-zinc-400 font-bold whitespace-nowrap">{tag}</span>)
               ) : (
-                <span className="text-[9px] text-zinc-600">Old Engine</span>
+                <span className="text-[10px] text-zinc-600">Legacy</span>
               )}
             </div>
           </div>
