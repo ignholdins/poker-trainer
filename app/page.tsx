@@ -319,12 +319,17 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       <div className="flex flex-col items-center w-full max-w-[1100px] gap-2 sm:gap-4 relative pb-4 sm:pb-0">
 
       {/* ── TABLE FELT ── */}
-      <div className="relative w-full shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2 / 1', borderRadius: '50%', background: '#1d2a1e', border: '14px solid #1a1008', boxShadow: '0 0 0 3px #3d2808, 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.04)' }}>
+      <div className="relative w-full shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2.1 / 1', borderRadius: '50%', background: '#1d2a1e', border: '12px solid #1a1008', boxShadow: '0 0 0 2px #3d2808, 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.04)' }}>
         {/* Green felt surface */}
-        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 40%, #2d6e3a 0%, #1b5228 55%, #0e3519 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 40%, #226b34 0%, #154522 60%, #0a2b14 100%)' }} />
         {/* Inner rim highlight ring */}
-        <div className="absolute" style={{ inset: '8px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.07)', pointerEvents: 'none' }} />
-        <div className="absolute inset-0 rounded-[50%]" style={{ background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div className="absolute" style={{ inset: '8px', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+        
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-20">
+          <div className="text-[10px] font-black uppercase tracking-[0.5em] mb-1" style={{ color: 'var(--accent)' }}>PLO6 TRAINER</div>
+          <div className="w-12 h-[1px]" style={{ background: 'linear-gradient(90deg, transparent, var(--accent), transparent)' }} />
+        </div>
+
         <div className="absolute inset-3">
 
           {/* Center logo */}
@@ -350,25 +355,32 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                 </div>
                   
                 {/* Name tag and Chip */}
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="px-2 py-0.5 rounded text-[9px] font-bold" style={{
-                    background: folded ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    color: folded ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
+                <div className="flex items-center gap-1 mt-0.5">
+                  <div className="flex flex-col items-center px-1.5 py-0.5 rounded min-w-[40px] shadow-sm" style={{
+                    background: 'rgba(13,17,23,0.85)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(4px)'
                   }}>
-                    {seat.pos}{folded ? ' ×' : ''}
+                    <span className="text-[8px] font-black tracking-wider text-white/90">{(isSB || isBB) ? seat.pos : seat.pos}</span>
+                    {!folded && <span className="text-[7px] font-bold text-amber-400">25.00</span>}
                   </div>
                   
                   {(isSB || isBB) && (
-                    <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold text-[7px] border shadow-sm animate-in zoom-in"
-                         style={{ background: 'radial-gradient(circle, #888 0%, #555 100%)', borderColor: 'rgba(200,200,200,0.4)', color: 'white' }}>
-                      {isSB ? 'SB' : 'BB'}
+                    <div className="w-[16px] h-[16px] rounded-full flex items-center justify-center font-bold text-[7px] border shadow-sm animate-in zoom-in"
+                         style={{ background: 'radial-gradient(circle, #888 0%, #555 100%)', borderColor: 'rgba(255,255,255,0.2)', color: 'white' }}>
+                      {isSB ? 'S' : 'B'}
                     </div>
                   )}
                 </div>
               </div>
             );
           })}
+
+          {/* Pot indicator */}
+          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/40 border border-white/10 flex items-center gap-1.5 shadow-lg">
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Pot: 1.5</span>
+          </div>
 
           {/* Feedback overlay */}
           {table.showFeedback && (
@@ -440,33 +452,57 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       </div>
 
       {/* ── ACTION BUTTONS ── */}
-      <div className="flex gap-3 w-full max-w-md">
-        <button
-          onClick={() => onDecision('fold')}
-          disabled={!canAct}
-          className="flex-1 py-4 rounded-2xl font-bold text-base sm:text-lg tracking-tight transition-all active:scale-95"
-          style={{
-            background: canAct ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.03)',
-            border: canAct ? '1px solid rgba(248,113,113,0.35)' : '1px solid rgba(255,255,255,0.05)',
-            color: canAct ? '#f87171' : 'var(--text-muted)',
-            boxShadow: canAct ? '0 0 20px rgba(248,113,113,0.1)' : 'none',
-          }}
-        >
-          Fold
-        </button>
-        <button
-          onClick={() => onDecision('raise')}
-          disabled={!canAct}
-          className="flex-1 py-4 rounded-2xl font-bold text-base sm:text-lg tracking-tight transition-all active:scale-95"
-          style={{
-            background: canAct ? 'var(--accent)' : 'rgba(255,255,255,0.03)',
-            border: canAct ? '1px solid rgba(0,229,160,0.5)' : '1px solid rgba(255,255,255,0.05)',
-            color: canAct ? '#000' : 'var(--text-muted)',
-            boxShadow: canAct ? '0 0 24px var(--accent-glow)' : 'none',
-          }}
-        >
-          Raise
-        </button>
+      <div className="flex flex-col items-center gap-4 w-full max-w-lg">
+        {/* Sizing shortcuts */}
+        <div className="flex gap-2 w-full px-2">
+          {['2X', '2.5X', '3X', 'POT'].map(size => (
+            <button 
+              key={size}
+              className="flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border border-white/10 transition-all hover:bg-white/5 active:scale-95"
+              style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)' }}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex gap-2.5 w-full">
+          <button
+            onClick={() => onDecision('fold')}
+            disabled={!canAct}
+            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all active:scale-95 shadow-xl"
+            style={{
+              background: canAct ? 'linear-gradient(180deg, #db3a4a 0%, #9b1e2a 100%)' : 'rgba(255,255,255,0.03)',
+              borderBottom: canAct ? '4px solid #7a1520' : '1px solid rgba(255,255,255,0.05)',
+              color: canAct ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            Fold
+          </button>
+          <button
+            disabled={true}
+            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all opacity-40 cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(180deg, #226b34 0%, #154522 100%)',
+              borderBottom: '4px solid #0d2b14',
+              color: '#fff',
+            }}
+          >
+            Check
+          </button>
+          <button
+            onClick={() => onDecision('raise')}
+            disabled={!canAct}
+            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all active:scale-95 shadow-xl"
+            style={{
+              background: canAct ? 'linear-gradient(180deg, #ecb438 0%, #c48c1a 100%)' : 'rgba(255,255,255,0.03)',
+              borderBottom: canAct ? '4px solid #8e6512' : '1px solid rgba(255,255,255,0.05)',
+              color: canAct ? '#000' : 'var(--text-muted)',
+            }}
+          >
+            Raise
+          </button>
+        </div>
       </div>
     </div>
   );
