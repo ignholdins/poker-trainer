@@ -282,29 +282,29 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                   {[1,2,3,4,5,6].map(n => (
                     <div key={n} className="rounded-[3px] border" style={{ width: '12px', height: '18px', marginLeft: n === 1 ? 0 : '-6px', background: 'linear-gradient(135deg, #1a3a5c 0%, #0d2139 100%)', borderColor: 'rgba(255,255,255,0.15)' }} />
                   ))}
+                </div>
                   
-                  {/* Blinds Chips for Opponents */}
+                {/* Name tag and Chip */}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="px-2 py-0.5 rounded text-[9px] font-bold" style={{
+                    background: folded ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: folded ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
+                  }}>
+                    {seat.pos}{folded ? ' ×' : ''}
+                  </div>
+                  
                   {(isSB || isBB) && (
-                    <div className="absolute -top-3 -right-5 z-20 flex flex-col items-center animate-in fade-in duration-500">
-                      <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border-[1.5px] shadow-[0_4px_10px_rgba(0,0,0,0.5)]" 
-                           style={{ 
-                             background: isSB ? 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)' : 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)',
-                             borderColor: isSB ? '#93c5fd' : '#fca5a5',
-                             color: 'white',
-                             borderStyle: 'dashed'
-                           }}>
-                        {isSB ? '0.5' : '1'}
-                      </div>
+                    <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold text-[7px] border-[1px] shadow-sm animate-in zoom-in" 
+                         style={{ 
+                           background: isSB ? 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)' : 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)',
+                           borderColor: isSB ? '#93c5fd' : '#fca5a5',
+                           color: 'white',
+                           borderStyle: 'dashed'
+                         }}>
+                      {isSB ? '.5' : '1'}
                     </div>
                   )}
-                </div>
-                {/* Name tag */}
-                <div className="px-2 py-0.5 rounded text-[9px] font-bold" style={{
-                  background: folded ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  color: folded ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.7)',
-                }}>
-                  {seat.pos}{folded ? ' ×' : ''}
                 </div>
               </div>
             );
@@ -332,7 +332,6 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                     </div>
                   </div>
                 </div>
-                <p className="text-[11px] sm:text-xs leading-relaxed max-w-[240px] sm:max-w-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{table.explanation}</p>
               </div>
             </div>
           )}
