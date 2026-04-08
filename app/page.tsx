@@ -345,7 +345,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                 {/* Cards */}
                 <div className="flex relative" style={{ opacity: folded ? 0.3 : 1 }}>
                   {[1,2,3,4,5,6].map(n => (
-                    <div key={n} className="rounded-[4px]" style={{ width: '11px', height: '17px', marginLeft: n === 1 ? 0 : '-5px', background: 'linear-gradient(145deg, #8b1a2a 0%, #5a0e1a 100%)', border: '1.5px solid #c43050', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
+                    <div key={n} className="rounded-[4px]" style={{ width: '10px', height: '16px', marginLeft: n === 1 ? 0 : '-4px', background: 'linear-gradient(150deg, #7e0f18 0%, #3e0609 100%)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }} />
                   ))}
                 </div>
                   
@@ -361,7 +361,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                   
                   {(isSB || isBB) && (
                     <div className="w-[18px] h-[18px] rounded-full flex items-center justify-center font-bold text-[7px] border shadow-sm animate-in zoom-in"
-                         style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderColor: 'rgba(240,100,100,0.5)', color: 'white' }}>
+                         style={{ background: 'radial-gradient(circle, #888 0%, #555 100%)', borderColor: 'rgba(200,200,200,0.4)', color: 'white' }}>
                       {isSB ? 'SB' : 'BB'}
                     </div>
                   )}
@@ -429,10 +429,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         {/* Hero position badge — chip embedded inside it */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
           {table.position === 'SB' && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-400/60 shadow" style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderStyle: 'solid', color: 'white' }}>SB</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border shadow" style={{ background: 'radial-gradient(circle, #999 0%, #555 100%)', borderColor: 'rgba(200,200,200,0.4)', color: 'white' }}>SB</div>
           )}
           {table.position === 'BB' && (
-            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-400/60 shadow" style={{ background: 'radial-gradient(circle, #e04040 0%, #9a1c1c 100%)', borderStyle: 'solid', color: 'white' }}>BB</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border shadow" style={{ background: 'radial-gradient(circle, #999 0%, #555 100%)', borderColor: 'rgba(200,200,200,0.4)', color: 'white' }}>BB</div>
           )}
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
           <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
