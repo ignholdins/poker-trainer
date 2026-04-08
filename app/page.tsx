@@ -432,7 +432,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
 
       {/* ── HERO HAND ── */}
       <div className="flex flex-col items-center gap-1 w-full -mt-2 sm:-mt-4">
-        <div className="flex justify-center items-end h-[80px] sm:h-[105px] w-full px-2 overflow-visible">
+        <div className="flex justify-center items-end h-[95px] sm:h-[125px] w-full px-2 overflow-visible">
           {table.hand.map((c: CardType, i: number) => {
             const offset = i - 2.5;
             const rotation = offset * 4.5; // Tighter rotation
@@ -440,10 +440,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
             return (
               <div
                 key={i}
-                className={`relative transition-all duration-300 hover:-translate-y-3 hover:z-50 ${i === 0 ? '' : '-ml-3.5 sm:-ml-6'}`}
+                className={`relative transition-all duration-300 hover:-translate-y-3 hover:z-50 ${i === 0 ? '' : '-ml-4 sm:-ml-8'}`}
                 style={{ transform: `rotate(${rotation}deg) translateY(${translateY}px)`, zIndex: i }}
               >
-                <div className="shadow-[0_4px_15px_rgba(0,0,0,0.55)] rounded-md overflow-hidden bg-black/20">
+                <div className="shadow-[0_5px_18px_rgba(0,0,0,0.6)] rounded-md overflow-hidden bg-black/20">
                   <PlayingCard card={c} revealed={true} />
                 </div>
               </div>
@@ -466,28 +466,11 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
 
       {/* ── ACTION BUTTONS ── */}
       <div className="flex flex-col items-center gap-4 w-full max-w-lg">
-        {/* Sizing shortcuts */}
-        <div className="flex gap-2 w-full px-2">
-          {['2X', '2.5X', '3X', 'POT'].map(size => (
-            <button 
-              key={size}
-              onClick={() => {
-                const multi = parseFloat(size) || 3.5; // Pot=3.5 for simplified preflop
-                setBetSize((1.0 * multi).toFixed(1));
-              }}
-              className="flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border border-white/10 transition-all hover:bg-white/10 active:scale-95"
-              style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)' }}
-            >
-              {size}
-            </button>
-          ))}
-        </div>
-
         <div className="flex gap-2.5 w-full">
           <button
             onClick={() => onDecision('fold')}
             disabled={!canAct}
-            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all active:scale-95 shadow-xl"
+            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-lg tracking-widest uppercase transition-all active:scale-95 shadow-xl"
             style={{
               background: canAct ? 'linear-gradient(180deg, #db3a4a 0%, #9b1e2a 100%)' : 'rgba(255,255,255,0.03)',
               borderBottom: canAct ? '4px solid #7a1520' : '1px solid rgba(255,255,255,0.05)',
@@ -497,27 +480,16 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
             Fold
           </button>
           <button
-            disabled={true}
-            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all opacity-40 cursor-not-allowed"
-            style={{
-              background: 'linear-gradient(180deg, #226b34 0%, #154522 100%)',
-              borderBottom: '4px solid #0d2b14',
-              color: '#fff',
-            }}
-          >
-            Check
-          </button>
-          <button
             onClick={() => onDecision('raise')}
             disabled={!canAct}
-            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-base tracking-widest uppercase transition-all active:scale-95 shadow-xl"
+            className="flex-1 py-4 sm:py-5 rounded-2xl font-black text-sm sm:text-lg tracking-widest uppercase transition-all active:scale-95 shadow-xl"
             style={{
               background: canAct ? 'linear-gradient(180deg, #ecb438 0%, #c48c1a 100%)' : 'rgba(255,255,255,0.03)',
               borderBottom: canAct ? '4px solid #8e6512' : '1px solid rgba(255,255,255,0.05)',
               color: canAct ? '#000' : 'var(--text-muted)',
             }}
           >
-            Raise {betSize}
+            Raise
           </button>
         </div>
       </div>

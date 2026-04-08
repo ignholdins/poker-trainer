@@ -33,12 +33,12 @@ export function PlayingCard({
   if (!revealed) {
     return (
       <div
-        className={`relative flex-shrink-0 ${compact ? 'w-9 h-[52px]' : 'w-12 h-[70px] sm:w-[60px] sm:h-[84px]'}`}
+        className={`relative flex-shrink-0 ${compact ? 'w-9 h-[52px]' : 'w-14 h-[80px] sm:w-[70px] sm:h-[98px]'}`}
         style={{
-          borderRadius: '8px',
+          borderRadius: '9px',
           background: 'linear-gradient(150deg, #7e1020 0%, #3e0610 100%)',
           border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.7)',
+          boxShadow: '0 5px 15px rgba(0,0,0,0.7)',
         }}
       >
         <div
@@ -59,22 +59,22 @@ export function PlayingCard({
   // Card dimensions
   const wrapper = compact
     ? 'w-9 h-[52px]'
-    : 'w-12 h-[70px] sm:w-[60px] sm:h-[84px]';
+    : 'w-14 h-[80px] sm:w-[70px] sm:h-[98px]';
 
   // Corner rank: very large — dominant like CoinPoker
   const isTen = card.rank === '10';
   const rankSize = compact 
     ? (isTen ? 'text-[18px]' : 'text-[22px]') 
-    : (isTen ? 'text-[24px] sm:text-[30px]' : 'text-[28px] sm:text-[34px]');
+    : (isTen ? 'text-[28px] sm:text-[36px]' : 'text-[32px] sm:text-[42px]');
     
   // Suit below rank: smaller
-  const suitSize = compact ? 'text-[12px]' : 'text-[14px] sm:text-[17px]';
+  const suitSize = compact ? 'text-[12px]' : 'text-[16px] sm:text-[20px]';
 
   return (
     <div
       className={`relative flex-shrink-0 overflow-hidden select-none ${wrapper}`}
       style={{
-        borderRadius: '8px',
+        borderRadius: '9px',
         background: bg,
         border: '1px solid rgba(255,255,255,0.10)',
         boxShadow: '0 5px 16px rgba(0,0,0,0.6)',
