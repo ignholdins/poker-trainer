@@ -141,7 +141,7 @@ export default function PLO6Trainer() {
       {/* ── MAIN ── */}
       <main className="flex-1 flex flex-col overflow-y-auto">
         {view === 'trainer' && (
-          <div className="flex flex-col items-center justify-center w-full h-full max-w-5xl mx-auto py-6 px-4 sm:px-8" style={{ minHeight: 'calc(100vh - 64px)' }}>
+          <div className="flex flex-col items-center justify-start sm:justify-center w-full h-full max-w-5xl mx-auto py-4 sm:py-6 px-4 sm:px-8" style={{ minHeight: 'calc(100vh - 64px)' }}>
             {isPaused ? (
               <div className="flex flex-col items-center gap-8 text-center">
                 <div>
@@ -255,12 +255,12 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
   const tier = percentileTier(table.percentile);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-[1100px] gap-4">
+      <div className="flex flex-col items-center w-full max-w-[1100px] gap-2 sm:gap-4 relative pb-4 sm:pb-0">
 
       {/* ── TABLE FELT ── */}
-      <div className="relative w-full rounded-[80px] sm:rounded-[120px] shadow-2xl overflow-hidden" style={{ aspectRatio: '2.4 / 1', minHeight: '260px', background: '#0a1a14', border: '3px solid rgba(255,255,255,0.06)', boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
+      <div className="relative w-full rounded-[60px] sm:rounded-[120px] shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2.4 / 1', background: '#0a1a14', border: '3px solid rgba(255,255,255,0.06)', boxShadow: '0 40px 100px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05)' }}>
         {/* Outer ring */}
-        <div className="absolute inset-3 rounded-[70px] sm:rounded-[110px] felt" style={{ border: '2px solid rgba(255,255,255,0.04)' }}>
+        <div className="absolute inset-2 sm:inset-3 rounded-[50px] sm:rounded-[110px] felt" style={{ border: '2px solid rgba(255,255,255,0.04)' }}>
 
           {/* Center logo */}
           <div className="absolute inset-0 flex items-center justify-center">
@@ -317,8 +317,8 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       </div>
 
       {/* ── HERO HAND ── */}
-      <div className="flex flex-col items-center gap-3 w-full -mt-4 sm:-mt-8">
-        <div className="flex justify-center items-end h-[140px] w-full px-4 overflow-visible">
+      <div className="flex flex-col items-center gap-2 sm:gap-3 w-full -mt-4 sm:-mt-8">
+        <div className="flex justify-center items-end h-[100px] sm:h-[140px] w-full px-2 sm:px-4 overflow-visible">
           {table.hand.map((c: CardType, i: number) => {
             const offset = i - 2.5; 
             const rotation = offset * 5; 
@@ -342,9 +342,9 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         </div>
 
         {/* Hero label */}
-        <div className="flex items-center gap-2 px-5 py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
+        <div className="flex items-center gap-2 px-4 sm:px-5 py-1 sm:py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
-          <span className="text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
         </div>
       </div>
 
