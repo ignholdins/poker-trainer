@@ -322,46 +322,41 @@ function AnalyticsView({ stats }: { stats: SessionStats }) {
 // HISTORY VIEW
 // ═══════════════════════════════════════════════════════════
 function HistoryView({ history }: { history: HandResult[] }) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
   return (
     <div className="p-4 space-y-3">
       <h2 className="text-xl font-bold mb-4">Hand History</h2>
       {history.map((hand, i) => (
-        <div key={i} className="bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800">
-          <button onClick={() => setExpandedId(expandedId === i.toString() ? null : i.toString())} className="w-full flex items-center justify-between p-4 active:bg-zinc-800/50">
-            <div className="flex items-center gap-3">
-              <PositionBadge position={hand.position} />
-              <div className="flex text-xs">{hand.hand.slice(0,3).map(c => c.rank+c.suit).join('')}...</div>
+        <div key={i} className="bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-4 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <PositionBadge position={hand.position} />
+            <div className="flex gap-0.5 sm:gap-1">
+              {hand.hand.map((c, idx) => <InlineCard key={idx} card={c} />)}
             </div>
-            <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
-              {expandedId === i.toString() ? <ChevronUp className="w-4 h-4 text-zinc-500"/> : <ChevronDown className="w-4 h-4 text-zinc-500"/>}
-            </div>
-          </button>
+          </div>
           
-          {expandedId === i.toString() && (
-            <div className="bg-black/40 border-t border-zinc-800 p-4 flex flex-col gap-4">
-              <div className="flex justify-center gap-1.5">
-                 {hand.hand.map((c, idx) => (
-                    <PlayingCard key={idx} card={c} index={idx} compact={true} revealed={true} />
-                 ))}
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] text-zinc-500 uppercase font-bold">Percentile</span>
-                  <p className="text-lg font-mono font-bold">{hand.percentile?.toFixed(1)}%</p>
-                </div>
-                <div>
-                  <span className="text-[10px] text-zinc-500 uppercase font-bold">Correct Action</span>
-                  <p className={`text-lg font-bold uppercase ${hand.playerAction === hand.correctAction ? 'text-green-500' : 'text-zinc-300'}`}>{hand.correctAction}</p>
-                </div>
-                <div className="col-span-2 flex flex-wrap gap-1.5">
-                  {hand.tags?.map(tag => <span key={tag} className="text-[9px] px-2 py-1 bg-zinc-800 rounded text-zinc-300">{tag}</span>)}
-                </div>
+          <div className="flex items-center justify-between xl:justify-end gap-4 w-full xl:w-auto overflow-hidden">
+            <div className="flex flex-col min-w-[60px]">
+              <span className="text-[9px] text-zinc-500 uppercase font-bold">Grade</span>
+              <span className="text-xs font-mono font-bold text-zinc-300">{hand.percentile?.toFixed(1)}%</span>
+            </div>
+
+            <div className="flex flex-col min-w-[80px]">
+              <span className="text-[9px] text-zinc-500 uppercase font-bold">Action</span>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-xs font-bold uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
+                {!hand.isCorrect && (
+                  <>
+                    <span className="text-[10px] text-zinc-500">→</span>
+                    <span className="text-xs font-bold uppercase text-zinc-300">{hand.correctAction}</span>
+                  </>
+                )}
               </div>
             </div>
-          )}
+
+            <div className="hidden sm:flex flex-wrap gap-1 max-w-[150px] justify-end">
+              {hand.tags?.map(tag => <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300 whitespace-nowrap">{tag}</span>)}
+            </div>
+          </div>
         </div>
       ))}
     </div>
