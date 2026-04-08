@@ -245,7 +245,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         <div className="flex justify-center items-end h-[120px] w-full">
           {table.hand.map((c: CardType, i: number) => (
              <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*6}deg)`, zIndex: i, marginLeft: i===0?0:'-1rem' }}>
-                <PlayingCard card={c} index={i} revealed={true} />
+                <PlayingCard card={c} revealed={true} />
              </div>
           ))}
         </div>
