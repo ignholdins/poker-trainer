@@ -3,13 +3,13 @@
 :root {
   --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
 
-  /* Premium dark palette */
-  --bg-base:     #080b10;
-  --bg-surface:  #0d1117;
-  --bg-card:     #111827;
-  --bg-hover:    #1a2233;
-  --border:      rgba(255,255,255,0.07);
-  --border-soft: rgba(255,255,255,0.04);
+  /* Premium dark-navy palette — not pure black */
+  --bg-base:     #0f1623;
+  --bg-surface:  #141d2b;
+  --bg-card:     #1a2236;
+  --bg-hover:    #1e2a40;
+  --border:      rgba(255,255,255,0.09);
+  --border-soft: rgba(255,255,255,0.05);
 
   /* Accent */
   --accent:      #00e5a0;

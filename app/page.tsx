@@ -213,15 +213,34 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
   const isFolded = (pos: string) => ACTION_ORDER.indexOf(pos) < heroActionIdx;
 
   const renderDealerButton = () => {
-    if (table.position === 'BTN') {
+    const btnPos = 'BTN';
+    const isHeroBtn = table.position === btnPos;
+
+    if (isHeroBtn) {
       return (
-        <div className="absolute bottom-[30%] right-[37%] z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black" style={{ background: '#fff', border: '2px solid #e5e7eb' }}>D</div>
+        <div className="absolute bottom-[28%] right-[38%] z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black bg-white border-2 border-slate-200 animate-in fade-in zoom-in duration-500">
+          D
+        </div>
       );
     }
-    return seats.map((s, i) => s.pos === 'BTN' && (
-      <div key={`d-${i}`} className={`absolute z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black ${s.style}`}
-        style={{ background: '#fff', border: '2px solid #e5e7eb', transform: 'translate(36px, 20px)' }}>D</div>
-    ));
+
+    const btnSeat = seats.find(s => s.pos === btnPos);
+    if (!btnSeat) return null;
+
+    // Relative offsets based on seat position to keep it inside the table but near the seat
+    const isLeft = btnSeat.style.includes('left-');
+    const isTop = btnSeat.style.includes('top-');
+    
+    const transform = `translate(${isLeft ? '40px' : '-40px'}, ${isTop ? '30px' : '-30px'})`;
+
+    return (
+      <div 
+        className={`absolute z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black bg-white border-2 border-slate-200 transition-all duration-700 ${btnSeat.style}`}
+        style={{ transform }}
+      >
+        D
+      </div>
+    );
   };
 
   const isCorrect = table.playerAction === table.correctAction;
@@ -298,13 +317,30 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       </div>
 
       {/* ── HERO HAND ── */}
-      <div className="flex flex-col items-center gap-3 w-full">
-        <div className="flex justify-center items-end gap-0">
-          {table.hand.map((c: CardType, i: number) => (
-            <div key={i} className="relative" style={{ transform: `rotate(${(i - 2.5) * 3}deg) translateY(${Math.abs(i - 2.5) * 3}px)`, zIndex: i, marginLeft: i === 0 ? 0 : '-10px' }}>
-              <PlayingCard card={c} revealed={true} />
-            </div>
-          ))}
+      <div className="flex flex-col items-center gap-3 w-full -mt-4 sm:-mt-8">
+        <div className="flex justify-center items-end h-[140px] w-full px-4 overflow-visible">
+          {table.hand.map((c: CardType, i: number) => {
+            const offset = i - 2.5; // -2.5 to 2.5
+            const rotation = offset * 5; // -12.5 to 12.5 deg
+            const translateY = Math.abs(offset) * 6; // Arc effect
+            const translateX = offset * -4; // Tighten spread
+            
+            return (
+              <div 
+                key={i} 
+                className="relative transition-all duration-300 hover:-translate-y-4 hover:z-50" 
+                style={{ 
+                  transform: `rotate(${rotation}deg) translateY(${translateY}px) translateX(${translateX}px)`, 
+                  zIndex: i,
+                  marginLeft: i === 0 ? 0 : '-1.5rem'
+                }}
+              >
+                <div className="shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-xl overflow-hidden">
+                  <PlayingCard card={c} revealed={true} />
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Hero label */}
