@@ -1,30 +1,30 @@
 import React from 'react';
 import { Card as CardType } from '@/lib/poker';
 
-// Exact CoinPoker card colors from reference image — all deep/dark
+// CoinPoker-style card colors — medium vibrant, clearly readable
 const SUIT_CONFIG: Record<string, { bg: string; highlight: string; symbol: string }> = {
   s: {
-    // Near-black charcoal — spades
-    bg: 'linear-gradient(160deg, #22242e 0%, #0e1018 100%)',
-    highlight: 'rgba(255,255,255,0.08)',
+    // Dark charcoal/black — spades (darkest suit)
+    bg: 'linear-gradient(160deg, #2e3040 0%, #16181f 100%)',
+    highlight: 'rgba(255,255,255,0.09)',
     symbol: '♠',
   },
   c: {
-    // Very deep forest green — clubs
-    bg: 'linear-gradient(160deg, #114422 0%, #061a0d 100%)',
-    highlight: 'rgba(255,255,255,0.08)',
+    // Medium green — clubs (clear, vibrant green)
+    bg: 'linear-gradient(160deg, #1e7a30 0%, #0e4418 100%)',
+    highlight: 'rgba(255,255,255,0.09)',
     symbol: '♣',
   },
   d: {
-    // Deep navy blue — diamonds
-    bg: 'linear-gradient(160deg, #1a2680 0%, #0c1450 100%)',
+    // Medium blue — diamonds (clear, vibrant blue)
+    bg: 'linear-gradient(160deg, #2655cc 0%, #132e80 100%)',
     highlight: 'rgba(255,255,255,0.09)',
     symbol: '♦',
   },
   h: {
-    // Deep wine/crimson — hearts
-    bg: 'linear-gradient(160deg, #8a1216 0%, #450608 100%)',
-    highlight: 'rgba(255,255,255,0.08)',
+    // Medium red — hearts (clear, vibrant red)
+    bg: 'linear-gradient(160deg, #cc1c28 0%, #7a0e16 100%)',
+    highlight: 'rgba(255,255,255,0.09)',
     symbol: '♥',
   },
 };
