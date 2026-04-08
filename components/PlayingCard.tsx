@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card as CardType } from '@/lib/poker';
 
-export function PlayingCard({ card, index, compact = false, revealed = true }: { card: CardType, index: number, compact?: boolean, revealed?: boolean }) {
+export function PlayingCard({ card, compact = false, revealed = true }: { card: CardType, compact?: boolean, revealed?: boolean }) {
   const suitColors = {
     s: 'text-slate-900', // Spades = Black
     h: 'text-red-600',   // Hearts = Red

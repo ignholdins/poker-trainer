@@ -8,7 +8,7 @@ import {
 } from '@/lib/poker';
 import { PlayingCard, InlineCard } from '@/components/PlayingCard';
 import { PositionBadge } from '@/components/PositionBadge';
-import { Settings, BarChart3, History, Play, Layers, Target, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, BarChart3, History, Play, Layers, Target } from 'lucide-react';
 
 type View = 'trainer' | 'drills' | 'analytics' | 'history' | 'settings';
 
@@ -131,13 +131,14 @@ export default function PLO6Trainer() {
 // ═══════════════════════════════════════════════════════════
 // POKER TABLE COMPONENT (The Engine)
 // ═══════════════════════════════════════════════════════════
-function PokerTable({ table, isActive, isPaused, onDecision }: any) {
+function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableState, isActive: boolean, isPaused: boolean, onDecision: (act: Action) => void }) {
   const ACTION_ORDER = ['UTG', 'CO', 'BTN', 'SB', 'BB'];
   const heroActionIdx = ACTION_ORDER.indexOf(table.position);
 
   const [currentActorIdx, setCurrentActorIdx] = useState(0);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setCurrentActorIdx(0);
   }, [table.id]);
 
@@ -151,6 +152,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
         return () => clearTimeout(timer);
       }
     } else {
+      // eslint-disable-next-line
       setCurrentActorIdx(heroActionIdx);
     }
   }, [currentActorIdx, heroActionIdx, isPaused, table.scenario, table.playerAction]);
@@ -241,7 +243,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
 
       <div className="relative z-30 -mt-8 sm:-mt-16 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
         <div className="flex justify-center items-end h-[120px] w-full">
-          {table.hand.map((c: any, i: any) => (
+          {table.hand.map((c: CardType, i: number) => (
              <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*6}deg)`, zIndex: i, marginLeft: i===0?0:'-1rem' }}>
                 <PlayingCard card={c} index={i} revealed={true} />
              </div>
@@ -366,7 +368,7 @@ function HistoryView({ history }: { history: HandResult[] }) {
 // ═══════════════════════════════════════════════════════════
 // SETTINGS VIEW
 // ═══════════════════════════════════════════════════════════
-function SettingsView({ activePositions, setActivePositions }: any) {
+function SettingsView({ activePositions, setActivePositions }: { activePositions: Position[], setActivePositions: (p: Position[]) => void }) {
   const togglePosition = (pos: Position) => {
     if (activePositions.includes(pos) && activePositions.length > 1) {
       setActivePositions(activePositions.filter((p: Position) => p !== pos));

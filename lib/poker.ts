@@ -122,7 +122,7 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: stri
     suits[c.suit].push(c);
   });
 
-  const pairs = Object.entries(rankCounts).filter(([_, count]) => count >= 2).map(([rank]) => rank);
+  const pairs = Object.entries(rankCounts).filter(([, count]) => count >= 2).map(([rank]) => rank);
   let hasAces = false;
   let hasKings = false;
 
@@ -182,7 +182,7 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: stri
      score -= 10;
   }
 
-  let finalTags = tags.filter((t, i) => tags.indexOf(t) === i).slice(0, 3);
+  const finalTags = tags.filter((t, i) => tags.indexOf(t) === i).slice(0, 3);
   
   let percentile = Math.max(1, 100 - score);
   if (score > 85) percentile = Math.random() * 5 + 1; // 1-6%
