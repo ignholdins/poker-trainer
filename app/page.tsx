@@ -341,13 +341,24 @@ function HistoryView({ history }: { history: HandResult[] }) {
           </button>
           
           {expandedId === i.toString() && (
-            <div className="bg-black/40 border-t border-zinc-800 p-4 grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-[10px] text-zinc-500 uppercase font-bold">Percentile</span>
-                <p className="text-lg font-mono font-bold">{hand.percentile?.toFixed(1)}%</p>
+            <div className="bg-black/40 border-t border-zinc-800 p-4 flex flex-col gap-4">
+              <div className="flex justify-center gap-1.5">
+                 {hand.hand.map((c, idx) => (
+                    <PlayingCard key={idx} card={c} index={idx} compact={true} revealed={true} />
+                 ))}
               </div>
-              <div className="col-span-2 flex flex-wrap gap-1.5">
-                {hand.tags?.map(tag => <span key={tag} className="text-[9px] px-2 py-1 bg-zinc-800 rounded text-zinc-300">{tag}</span>)}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase font-bold">Percentile</span>
+                  <p className="text-lg font-mono font-bold">{hand.percentile?.toFixed(1)}%</p>
+                </div>
+                <div>
+                  <span className="text-[10px] text-zinc-500 uppercase font-bold">Correct Action</span>
+                  <p className={`text-lg font-bold uppercase ${hand.playerAction === hand.correctAction ? 'text-green-500' : 'text-zinc-300'}`}>{hand.correctAction}</p>
+                </div>
+                <div className="col-span-2 flex flex-wrap gap-1.5">
+                  {hand.tags?.map(tag => <span key={tag} className="text-[9px] px-2 py-1 bg-zinc-800 rounded text-zinc-300">{tag}</span>)}
+                </div>
               </div>
             </div>
           )}
