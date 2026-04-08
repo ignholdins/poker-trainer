@@ -3,46 +3,45 @@ import { Card as CardType } from '@/lib/poker';
 
 export function PlayingCard({ card, compact = false, revealed = true }: { card: CardType, compact?: boolean, revealed?: boolean }) {
   const suitColors = {
-    s: 'text-slate-900', // Spades = Black
-    h: 'text-rose-600',  // Hearts = Red
-    d: 'text-blue-500',  // Diamonds = Blue
-    c: 'text-emerald-500' // Clubs = Green
+    s: 'text-black', 
+    h: 'text-[#e11d48]', // Vibrant Red
+    d: 'text-[#2563eb]', // Vibrant Blue
+    c: 'text-[#059669]'  // Vibrant Green
   };
   const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
 
   if (!revealed) {
     return (
-      <div className={`relative rounded-lg sm:rounded-xl border-2 border-white/10 shadow-2xl bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] bg-slate-900 ${compact ? 'w-10 h-14 sm:w-12 sm:h-16 lg:w-14 lg:h-20' : 'w-12 h-16 sm:w-16 sm:h-24 lg:w-20 lg:h-32'}`}>
-        <div className="absolute inset-1.5 rounded border border-white/10" />
+      <div className={`relative rounded-xl border-2 border-white/10 shadow-lg bg-slate-800 ${compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-20 sm:h-28 lg:w-24 lg:h-34'}`}>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-transparent rounded-xl" />
+        <div className="absolute inset-1 border border-white/5 rounded-lg" />
       </div>
     );
   }
 
-  const baseSize = compact ? 'w-10 h-14 sm:w-12 sm:h-16 lg:w-14 lg:h-20' : 'w-12 h-16 sm:w-16 sm:h-24 lg:w-20 lg:h-32';
-  const fontSize = compact ? 'text-[11px] sm:text-sm' : 'text-xs sm:text-base lg:text-xl';
-  const centerSuitSize = compact ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-5xl lg:text-7xl';
+  // Adjusted sizes for even bigger indices
+  const baseSize = compact ? 'w-10 h-14' : 'w-14 h-20 sm:w-20 sm:h-28 lg:w-24 lg:h-34';
+  const fontSize = compact ? 'text-xs' : 'text-base sm:text-2xl lg:text-3xl';
+  const centerSize = compact ? 'text-2xl' : 'text-4xl sm:text-6xl lg:text-8xl';
 
   return (
-    <div className={`bg-neutral-50 relative rounded-lg sm:rounded-xl border border-slate-300 shadow-2xl flex items-center justify-center font-black ${suitColors[card.suit]} ${baseSize}`} style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%)' }}>
-      {/* Top Left Index */}
-      <div className={`absolute top-1 left-1.5 flex flex-col items-center leading-none ${fontSize}`}>
-        <span className="mb-0.5">{card.rank}</span>
-        <span className="text-[0.9em]">{suitSymbols[card.suit]}</span>
+    <div className={`bg-white relative rounded-xl border-2 border-slate-100 shadow-xl flex items-center justify-center font-black ${suitColors[card.suit]} ${baseSize}`}>
+      {/* Top Left Index - MASSIVE */}
+      <div className={`absolute top-1 left-1 flex flex-col items-center leading-none ${fontSize}`}>
+        <span className="tracking-tighter">{card.rank}</span>
+        <span className="-mt-0.5">{suitSymbols[card.suit]}</span>
       </div>
 
-      {/* Center Large Suit - much more visible now */}
-      <div className={`${centerSuitSize} opacity-[0.18] select-none filter blur-[0.5px]`}>
+      {/* Center Large Suit - SOLID COLOR, BOLD */}
+      <div className={`${centerSize} opacity-15 select-none`}>
         {suitSymbols[card.suit]}
       </div>
 
       {/* Bottom Right Index - flipped */}
-      <div className={`absolute bottom-1 right-1.5 flex flex-col items-center leading-none rotate-180 ${fontSize}`}>
-        <span className="mb-0.5">{card.rank}</span>
-        <span className="text-[0.9em]">{suitSymbols[card.suit]}</span>
+      <div className={`absolute bottom-1 right-1 flex flex-col items-center leading-none rotate-180 ${fontSize}`}>
+        <span className="tracking-tighter">{card.rank}</span>
+        <span className="-mt-0.5">{suitSymbols[card.suit]}</span>
       </div>
-      
-      {/* Subtle Sheen */}
-      <div className="absolute inset-0 rounded-lg sm:rounded-xl pointer-events-none" style={{ background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 50%)' }} />
     </div>
   );
 }
