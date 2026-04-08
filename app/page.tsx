@@ -63,11 +63,16 @@ export default function PLO6Trainer() {
     }));
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      await supabase.from('hand_history').insert([{
-        user_id: getUserId(), position: result.position, scenario: result.scenario || 'RFI',
-        hand: result.hand, percentile: result.percentile, tags: result.tags,
-        correct_action: result.correctAction, player_action: result.playerAction, is_correct: result.isCorrect
-      }]);
+      try {
+        const { error } = await supabase.from('hand_history').insert([{
+          user_id: getUserId(), position: result.position, scenario: result.scenario || 'RFI',
+          hand: result.hand, percentile: result.percentile, tags: result.tags,
+          correct_action: result.correctAction, player_action: result.playerAction, is_correct: result.isCorrect
+        }]);
+        if (error) console.error('Failed to save hand history:', error);
+      } catch (err) {
+        console.error('Network error saving hand history:', err);
+      }
     }
 
     setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t));
