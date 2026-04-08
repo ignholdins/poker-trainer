@@ -272,13 +272,31 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
           {/* Opponent seats */}
           {seats.map((seat, i) => {
             const folded = isFolded(seat.pos);
+            const isSB = seat.pos === 'SB';
+            const isBB = seat.pos === 'BB';
+
             return (
               <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center gap-1`}>
                 {/* Cards */}
-                <div className="flex" style={{ opacity: folded ? 0.15 : 0.85 }}>
+                <div className="flex relative" style={{ opacity: folded ? 0.15 : 0.85 }}>
                   {[1,2,3,4,5,6].map(n => (
                     <div key={n} className="rounded-[3px] border" style={{ width: '12px', height: '18px', marginLeft: n === 1 ? 0 : '-6px', background: 'linear-gradient(135deg, #1a3a5c 0%, #0d2139 100%)', borderColor: 'rgba(255,255,255,0.15)' }} />
                   ))}
+                  
+                  {/* Blinds Chips for Opponents */}
+                  {(isSB || isBB) && (
+                    <div className="absolute -top-3 -right-5 z-20 flex flex-col items-center animate-in fade-in duration-500">
+                      <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border-[1.5px] shadow-[0_4px_10px_rgba(0,0,0,0.5)]" 
+                           style={{ 
+                             background: isSB ? 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)' : 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)',
+                             borderColor: isSB ? '#93c5fd' : '#fca5a5',
+                             color: 'white',
+                             borderStyle: 'dashed'
+                           }}>
+                        {isSB ? '0.5' : '1'}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 {/* Name tag */}
                 <div className="px-2 py-0.5 rounded text-[9px] font-bold" style={{
@@ -294,22 +312,27 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
 
           {/* Feedback overlay */}
           {table.showFeedback && (
-            <div className="absolute inset-0 flex items-center justify-center z-50" style={{ backdropFilter: 'blur(8px)', background: 'rgba(8,11,16,0.75)' }}>
-              <div className="flex flex-col items-center gap-4 px-8 py-6 rounded-3xl text-center" style={{ background: 'rgba(13,17,23,0.9)', border: `1px solid ${isCorrect ? 'rgba(0,229,160,0.3)' : 'rgba(248,113,113,0.3)'}`, boxShadow: `0 0 40px ${isCorrect ? 'rgba(0,229,160,0.15)' : 'rgba(248,113,113,0.15)'}` }}>
-                <div className="text-2xl sm:text-3xl font-black uppercase tracking-widest" style={{ color: isCorrect ? 'var(--accent)' : '#f87171' }}>
+            <div className="absolute inset-0 flex items-center justify-center z-50 p-4" style={{ backdropFilter: 'blur(4px)', background: 'rgba(8,11,16,0.5)' }}>
+              <div className="flex flex-col items-center gap-2 sm:gap-4 px-5 py-4 sm:px-8 sm:py-6 rounded-2xl shadow-2xl text-center animate-in zoom-in duration-200" style={{ background: 'rgba(13,17,23,0.95)', border: `1px solid ${isCorrect ? 'rgba(0,229,160,0.3)' : 'rgba(248,113,113,0.3)'}`, boxShadow: `0 0 30px ${isCorrect ? 'rgba(0,229,160,0.1)' : 'rgba(248,113,113,0.1)'}` }}>
+                <div className="text-xl sm:text-3xl font-black uppercase tracking-widest" style={{ color: isCorrect ? 'var(--accent)' : '#f87171' }}>
                   {isCorrect ? 'Correct' : 'Mistake'}
                 </div>
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-muted)' }}>Hand Strength</span>
-                  <span className="text-3xl font-black font-mono" style={{ color: tier.color }}>{table.percentile?.toFixed(0)}%</span>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: `${tier.color}15`, color: tier.color }}>{tier.label}</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[9px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-muted)' }}>Percentile</span>
+                    <span className="text-2xl sm:text-3xl font-black font-mono leading-none" style={{ color: tier.color }}>{table.percentile?.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-8 w-px bg-white/10" />
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase" style={{ background: `${tier.color}15`, color: tier.color }}>{tier.label}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {table.tags.slice(0, 2).map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>{tag}</span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 justify-center max-w-xs">
-                  {table.tags.map(tag => (
-                    <span key={tag} className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>{tag}</span>
-                  ))}
-                </div>
-                <p className="text-xs leading-relaxed max-w-xs" style={{ color: 'var(--text-secondary)' }}>{table.explanation}</p>
+                <p className="text-[11px] sm:text-xs leading-relaxed max-w-[240px] sm:max-w-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{table.explanation}</p>
               </div>
             </div>
           )}
@@ -341,10 +364,18 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
           })}
         </div>
 
-        {/* Hero label */}
-        <div className="flex items-center gap-2 px-4 sm:px-5 py-1 sm:py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
-          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
-          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
+        {/* Hero label & Blinds Chip */}
+        <div className="flex items-center gap-2">
+          {table.position === 'SB' && (
+            <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border-[1.5px] shadow-[0_4px_10px_rgba(35,35,35,0.7)] animate-in slide-in-from-bottom-2" style={{ background: 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)', borderColor: '#93c5fd', color: 'white', borderStyle: 'dashed' }}>0.5</div>
+          )}
+          {table.position === 'BB' && (
+            <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border-[1.5px] shadow-[0_4px_10px_rgba(35,35,35,0.7)] animate-in slide-in-from-bottom-2" style={{ background: 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)', borderColor: '#fca5a5', color: 'white', borderStyle: 'dashed' }}>1</div>
+          )}
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-1 sm:py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
+            <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
+          </div>
         </div>
       </div>
 
