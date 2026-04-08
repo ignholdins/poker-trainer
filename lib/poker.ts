@@ -142,21 +142,28 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: stri
   const pairCount = pairs.length;
 
   // ── PAIR SCORING ──────────────────────────────────────────────────────────
-  if (hasAA)       { score += 45; tags.push('Aces'); }
-  else if (hasKK)  { score += 28; tags.push('Kings'); }
-  else if (hasQQ)  { score += 18; tags.push('Queens'); }
-  else if (hasJJ)  { score += 12; tags.push('Jacks'); }
-  else if (hasTT)  { score +=  8; tags.push('Tens'); }
-  else if (pairCount > 0) { score += pairCount * 5; }
+  if (hasAA)       { score += 40; tags.push('Aces'); }
+  else if (hasKK)  { score += 26; tags.push('Kings'); }
+  else if (hasQQ)  { score += 16; tags.push('Queens'); }
+  else if (hasJJ)  { score += 10; tags.push('Jacks'); }
+  else if (hasTT)  { score +=  6; tags.push('Tens'); }
+  else if (pairCount > 0) { score += pairCount * 4; }
 
-  if (pairCount >= 2) { score += 12; tags.push('Double Paired'); }
+  if (pairCount >= 2) { score += 10; tags.push('Double Paired'); }
 
-  // ── SUITEDNESS SCORING ────────────────────────────────────────────────────
+  // ── SUITEDNESS & LEAK SCORING ─────────────────────────────────────────────
   const suitedGroups = Object.entries(suitGroups).filter(([, cards]) => cards.length >= 2);
   const nutSuited = suitedGroups.filter(([, cards]) => cards.some(c => c.rank === 'A'));
   const kingsSuited = suitedGroups.filter(([, cards]) => !cards.some(c => c.rank === 'A') && cards.some(c => c.rank === 'K'));
   const otherSuited = suitedGroups.filter(([, cards]) => !cards.some(c => c.rank === 'A') && !cards.some(c => c.rank === 'K'));
   const totalSuitedGroups = suitedGroups.length;
+
+  // Penalize "Suitedness Leaks" (3+ cards of same suit)
+  Object.values(suitGroups).forEach(cards => {
+    if (cards.length >= 5) { score -= 20; tags.push('Suit Heavy (5+)'); }
+    else if (cards.length === 4) { score -= 14; tags.push('Quad Suited'); }
+    else if (cards.length === 3) { score -= 6; tags.push('Tri Suited'); }
+  });
 
   // Award suitedness bonuses
   nutSuited.forEach(() => score += 12);
@@ -173,7 +180,7 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: stri
   } else if (isSingleSuited) {
     tags.push('SS');
   } else {
-    score -= 12;
+    score -= 15;
     tags.push('Rainbow');
   }
 

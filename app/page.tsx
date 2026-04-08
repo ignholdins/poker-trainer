@@ -320,22 +320,21 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       <div className="flex flex-col items-center gap-3 w-full -mt-4 sm:-mt-8">
         <div className="flex justify-center items-end h-[140px] w-full px-4 overflow-visible">
           {table.hand.map((c: CardType, i: number) => {
-            const offset = i - 2.5; // -2.5 to 2.5
-            const rotation = offset * 5; // -12.5 to 12.5 deg
-            const translateY = Math.abs(offset) * 6; // Arc effect
-            const translateX = offset * -4; // Tighten spread
+            const offset = i - 2.5; 
+            const rotation = offset * 4; 
+            const translateY = Math.abs(offset) * 5; 
+            const translateX = 0; // Removed negative translate that was clumping them
             
             return (
               <div 
                 key={i} 
-                className="relative transition-all duration-300 hover:-translate-y-4 hover:z-50" 
+                className={`relative transition-all duration-300 hover:-translate-y-4 hover:z-50 ${i === 0 ? '' : '-ml-6 sm:-ml-10'}`} 
                 style={{ 
                   transform: `rotate(${rotation}deg) translateY(${translateY}px) translateX(${translateX}px)`, 
                   zIndex: i,
-                  marginLeft: i === 0 ? 0 : '-1.5rem'
                 }}
               >
-                <div className="shadow-[0_10px_30px_rgba(0,0,0,0.5)] rounded-xl overflow-hidden">
+                <div className="shadow-[0_8px_25px_rgba(0,0,0,0.5)] rounded-lg sm:rounded-xl overflow-hidden border border-white/10">
                   <PlayingCard card={c} revealed={true} />
                 </div>
               </div>
