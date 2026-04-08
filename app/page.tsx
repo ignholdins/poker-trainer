@@ -411,23 +411,19 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       </div>
 
       {/* ── HERO HAND ── */}
-      <div className="flex flex-col items-center gap-2 sm:gap-3 w-full -mt-4 sm:-mt-8">
-        <div className="flex justify-center items-end h-[100px] sm:h-[140px] w-full px-2 sm:px-4 overflow-visible">
+      <div className="flex flex-col items-center gap-1.5 w-full -mt-3 sm:-mt-6">
+        <div className="flex justify-center items-end h-[85px] sm:h-[110px] w-full px-2 overflow-visible">
           {table.hand.map((c: CardType, i: number) => {
-            const offset = i - 2.5; 
-            const rotation = offset * 5; 
-            const translateY = Math.abs(offset) * 6; 
-            
+            const offset = i - 2.5;
+            const rotation = offset * 5;
+            const translateY = Math.abs(offset) * 5;
             return (
-              <div 
-                key={i} 
-                className={`relative transition-all duration-300 hover:-translate-y-4 hover:z-50 ${i === 0 ? '' : '-ml-4 sm:-ml-8'}`} 
-                style={{ 
-                  transform: `rotate(${rotation}deg) translateY(${translateY}px)`, 
-                  zIndex: i,
-                }}
+              <div
+                key={i}
+                className={`relative transition-all duration-300 hover:-translate-y-3 hover:z-50 ${i === 0 ? '' : '-ml-3 sm:-ml-5'}`}
+                style={{ transform: `rotate(${rotation}deg) translateY(${translateY}px)`, zIndex: i }}
               >
-                <div className="shadow-[0_8px_25px_rgba(0,0,0,0.5)] rounded-lg sm:rounded-xl overflow-hidden border border-white/5">
+                <div className="shadow-[0_6px_20px_rgba(0,0,0,0.55)] rounded-md overflow-hidden">
                   <PlayingCard card={c} revealed={true} />
                 </div>
               </div>
@@ -435,18 +431,16 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
           })}
         </div>
 
-        {/* Hero label & Blinds Chip */}
-        <div className="flex items-center gap-2">
+        {/* Hero position badge — chip embedded inside it */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
           {table.position === 'SB' && (
-            <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border-[1.5px] shadow-[0_4px_10px_rgba(35,35,35,0.7)] animate-in slide-in-from-bottom-2" style={{ background: 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)', borderColor: '#93c5fd', color: 'white', borderStyle: 'dashed' }}>0.5</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-blue-300 shadow" style={{ background: 'radial-gradient(circle, #3b82f6 0%, #1e40af 100%)', borderStyle: 'dashed', color: 'white' }}>0.5</div>
           )}
           {table.position === 'BB' && (
-            <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border-[1.5px] shadow-[0_4px_10px_rgba(35,35,35,0.7)] animate-in slide-in-from-bottom-2" style={{ background: 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)', borderColor: '#fca5a5', color: 'white', borderStyle: 'dashed' }}>1</div>
+            <div className="w-5 h-5 rounded-full flex items-center justify-center font-bold text-[8px] border border-red-300 shadow" style={{ background: 'radial-gradient(circle, #ef4444 0%, #991b1b 100%)', borderStyle: 'dashed', color: 'white' }}>1</div>
           )}
-          <div className="flex items-center gap-2 px-4 sm:px-5 py-1 sm:py-1.5 rounded-full" style={{ background: 'rgba(0,229,160,0.08)', border: '1px solid rgba(0,229,160,0.2)' }}>
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
-            <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
-          </div>
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--accent)' }} />
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase" style={{ color: 'var(--accent)' }}>{table.position} — Your Turn</span>
         </div>
       </div>
 
