@@ -261,7 +261,6 @@ export default function PLO6Trainer() {
 // POKER TABLE
 // ────────────────────────────────────────────────────────────────────────────
 function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableState, isActive: boolean, isPaused: boolean, onDecision: (act: Action) => void }) {
-  const [betSize, setBetSize] = useState('3.0');
   const ACTION_ORDER = ['UTG', 'CO', 'BTN', 'SB', 'BB'];
   const heroActionIdx = ACTION_ORDER.indexOf(table.position);
   const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction;

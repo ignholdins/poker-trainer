@@ -62,7 +62,7 @@ export function PlayingCard({
     : 'w-14 h-[80px] sm:w-[70px] sm:h-[98px]';
 
   // Corner rank: very large — dominant like CoinPoker
-  const isTen = card.rank === '10';
+  const isTen = card.rank === 'T';
   const rankSize = compact 
     ? (isTen ? 'text-[18px]' : 'text-[22px]') 
     : (isTen ? 'text-[28px] sm:text-[36px]' : 'text-[32px] sm:text-[42px]');
