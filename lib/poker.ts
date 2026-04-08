@@ -65,12 +65,34 @@ export const RANK_VALUES: Record<Rank, number> = {
 };
 
 export function sortHand(hand: Card[]): Card[] {
-  return [...hand].sort((a, b) => {
-    if (RANK_VALUES[a.rank] !== RANK_VALUES[b.rank]) {
-      return RANK_VALUES[b.rank] - RANK_VALUES[a.rank];
-    }
-    return a.suit.localeCompare(b.suit);
+  // Group cards by suit
+  const suitGroups: Record<Suit, Card[]> = { h: [], d: [], c: [], s: [] };
+  hand.forEach(card => suitGroups[card.suit].push(card));
+
+  // Sort each group by rank descending
+  Object.values(suitGroups).forEach(group => {
+    group.sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
   });
+
+  // Get active suits and sort them by their highest rank
+  const activeSuits = (Object.keys(suitGroups) as Suit[])
+    .filter(suit => suitGroups[suit].length > 0)
+    .sort((a, b) => {
+      const highA = RANK_VALUES[suitGroups[a][0].rank];
+      const highB = RANK_VALUES[suitGroups[b][0].rank];
+      if (highA !== highB) return highB - highA;
+      // Secondary: largest group first
+      if (suitGroups[a].length !== suitGroups[b].length) return suitGroups[b].length - suitGroups[a].length;
+      return a.localeCompare(b);
+    });
+
+  // Flatten the sorted groups back into a single array
+  const sorted: Card[] = [];
+  activeSuits.forEach(suit => {
+    sorted.push(...suitGroups[suit]);
+  });
+
+  return sorted;
 }
 
 // ─── DETERMINISTIC SCORE → PERCENTILE MAP ────────────────────────────────────
