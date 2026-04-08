@@ -184,10 +184,19 @@ export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: stri
 
   const finalTags = tags.filter((t, i) => tags.indexOf(t) === i).slice(0, 3);
   
-  let percentile = Math.max(1, 100 - score);
-  if (score > 85) percentile = Math.random() * 5 + 1; // 1-6%
-  else if (score > 60) percentile = Math.random() * 10 + 6; // 6-16%
-  else if (score > 40) percentile = Math.random() * 20 + 16; // 16-36%
+  // Map score to percentile: higher score = lower percentile = stronger hand
+  // Score range roughly: -25 (trash) to 100+ (monsters)
+  // We clamp strictly between 1 and 99
+  let percentile: number;
+  if (score >= 90) percentile = Math.random() * 4 + 1;        // Top 1–5%
+  else if (score >= 70) percentile = Math.random() * 8 + 5;   // Top 5–13%
+  else if (score >= 50) percentile = Math.random() * 12 + 13; // 13–25%
+  else if (score >= 35) percentile = Math.random() * 15 + 25; // 25–40%
+  else if (score >= 20) percentile = Math.random() * 20 + 40; // 40–60%
+  else if (score >= 5)  percentile = Math.random() * 20 + 60; // 60–80%
+  else                  percentile = Math.random() * 19 + 80; // 80–99%
+  
+  percentile = Math.min(99, Math.max(1, Math.round(percentile * 10) / 10));
   
   return { percentile, tags: finalTags.length ? finalTags : ['Trash'] };
 }

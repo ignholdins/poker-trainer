@@ -77,9 +77,10 @@ export default function PLO6Trainer() {
 
     setTables(prev => prev.map(t => t.id === tableId ? { ...t, playerAction: action, showFeedback: true } : t));
     
+    const nextTable = createTableState(tableId, activePositions, activeDrill);
     setTimeout(() => {
-      setTables(prev => prev.map(t => t.id === tableId ? createTableState(tableId, activePositions, activeDrill) : t));
-    }, 1500);
+      setTables(prev => prev.map(t => t.id === tableId ? nextTable : t));
+    }, 1600);
   }, [tables, activePositions, activeDrill]);
 
   return (
@@ -257,10 +258,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         </div>
       </div>
 
-      <div className="relative z-30 -mt-6 sm:-mt-12 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
-        <div className="flex justify-center items-end h-[120px] w-full">
+      <div className="relative z-30 mt-2 sm:mt-4 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
+        <div className="flex justify-center items-center h-[120px] w-full gap-0">
           {table.hand.map((c: CardType, i: number) => (
-             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*4}deg)`, zIndex: i, marginLeft: i===0?0:'-1.5rem' }}>
+             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*3}deg) translateY(${Math.abs(i-2.5)*4}px)`, zIndex: i, marginLeft: i===0?0:'-0.75rem' }}>
                 <PlayingCard card={c} revealed={true} />
              </div>
           ))}
