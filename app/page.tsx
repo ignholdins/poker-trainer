@@ -91,7 +91,7 @@ export default function PLO6Trainer() {
           <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center">
             <Layers className="w-4 h-4 text-green-500" />
           </div>
-          <h1 className="text-base font-bold text-white">PLO6 <span className="text-green-500">Trainer v4</span></h1>
+          <h1 className="text-base font-bold text-white">PLO6 <span className="text-green-500">Trainer v5</span></h1>
         </div>
         <nav className="flex items-center gap-1">
           {[
