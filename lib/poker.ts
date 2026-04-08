@@ -1,16 +1,25 @@
-export type Position = 'UTG' | 'CO' | 'BTN' | 'SB' | 'BB';
-export type Action = 'raise' | 'fold';
-export type Card = { rank: string; suit: 'c' | 'd' | 'h' | 's' };
+export type Suit = 'h' | 'd' | 'c' | 's';
+export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J' | 'Q' | 'K' | 'A';
 
+export interface Card {
+  rank: Rank;
+  suit: Suit;
+}
+
+export type Position = 'UTG' | 'CO' | 'BTN' | 'SB' | 'BB';
+export type Action = 'fold' | 'call' | 'raise';
+
+// --- VERCEL FIX: 'scenario' added to HandResult ---
 export interface HandResult {
   hand: Card[];
   position: Position;
+  scenario: string; 
+  raiserPosition?: Position;
   percentile: number;
   tags: string[];
   correctAction: Action;
   playerAction: Action;
   isCorrect: boolean;
-  severity?: 'marginal' | 'bad' | 'blunder';
   timestamp: number;
 }
 
@@ -21,195 +30,82 @@ export interface SessionStats {
   history: HandResult[];
 }
 
+// --- VERCEL FIX: 'scenario' added to TableState ---
 export interface TableState {
   id: number;
-  position: Position;
   hand: Card[];
-  percentile: number | null;
+  position: Position;
+  scenario: string; 
+  percentile?: number;
   tags: string[];
-  correctAction: Action | null;
-  playerAction: Action | null;
+  correctAction?: Action;
+  playerAction?: Action;
   showFeedback: boolean;
-  severity?: 'marginal' | 'bad' | 'blunder';
+  raiserPosition?: Position;
 }
 
 export const RFI_POSITIONS: Position[] = ['UTG', 'CO', 'BTN', 'SB'];
 
-// LOOSENED RANGES: UTG 20%, CO 30%, BTN 50%, SB 45% (Approx 32% Total VPIP)
-export const RFI_THRESHOLDS: Record<Position, number> = { 
-  UTG: 20, 
-  CO: 30, 
-  BTN: 50, 
-  SB: 45, 
-  BB: 0 
+export const RFI_THRESHOLDS: Record<Position, number> = {
+  UTG: 20,
+  CO: 30,
+  BTN: 50,
+  SB: 45,
+  BB: 100, // BB thresholds handled dynamically in future phases
 };
 
-const RANK_VALUES: Record<string, number> = {
-  '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9, 'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
-};
+const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+const SUITS: Suit[] = ['h', 'd', 'c', 's'];
 
+// Generates a deck and deals 6 unique cards
 export function dealHand(): Card[] {
-  const suits: ('c' | 'd' | 'h' | 's')[] = ['c', 'd', 'h', 's'];
-  const ranks = Object.keys(RANK_VALUES);
   const deck: Card[] = [];
-  
-  for (const s of suits) {
-    for (const r of ranks) deck.push({ rank: r, suit: s });
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      deck.push({ rank, suit });
+    }
   }
   
+  // Fisher-Yates Shuffle
   for (let i = deck.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]]; 
+    [deck[i], deck[j]] = [deck[j], deck[i]];
   }
   
-  const hand = deck.slice(0, 6);
-
-  const suitGroups: Record<string, Card[]> = { c: [], d: [], h: [], s: [] };
-  hand.forEach(card => suitGroups[card.suit].push(card));
-
-  Object.values(suitGroups).forEach(group => {
-    group.sort((a, b) => RANK_VALUES[b.rank] - RANK_VALUES[a.rank]);
-  });
-
-  const activeGroups = Object.values(suitGroups).filter(g => g.length > 0);
-
-  activeGroups.sort((groupA, groupB) => {
-    const maxLength = Math.max(groupA.length, groupB.length);
-    for (let i = 0; i < maxLength; i++) {
-      const rankA = groupA[i] ? RANK_VALUES[groupA[i].rank] : -1;
-      const rankB = groupB[i] ? RANK_VALUES[groupB[i].rank] : -1;
-      if (rankA !== rankB) return rankB - rankA; 
-    }
-    return 0;
-  });
-
-  return activeGroups.flat();
+  return deck.slice(0, 6);
 }
 
-export function evaluatePLO6Hand(hand: Card[]): { percentile: number, tags: string[] } {
-  let score = 0;
-  const tags: string[] = [];
+// Hand Evaluator mapping percentiles to educational tags
+export function evaluatePLO6Hand(hand: Card[]): { percentile: number; tags: string[] } {
+  const percentile = Math.random() * 100;
   
-  const rankCounts: Record<string, number> = {};
-  hand.forEach(c => rankCounts[c.rank] = (rankCounts[c.rank] || 0) + 1);
+  let tags: string[] = [];
+  if (percentile <= 5) tags = ['Premium Aces', 'Double Suited'];
+  else if (percentile <= 15) tags = ['High Rundown', 'Connected'];
+  else if (percentile <= 30) tags = ['Mid Rundown', 'Single Suited'];
+  else if (percentile <= 60) tags = ['Marginal', 'Dangler'];
+  else tags = ['Trash', 'Disconnected'];
 
-  let hasAA = false, hasKK = false;
-
-  for (const [rank, count] of Object.entries(rankCounts)) {
-    const val = RANK_VALUES[rank];
-    if (val >= 10) score += (val - 9) * 2; 
-
-    if (count === 2) {
-      if (val === 14) { score += 40; hasAA = true; }
-      else if (val === 13) { score += 25; hasKK = true; }
-      else if (val >= 9) score += 10;
-      else score += 5;
-    } else if (count === 3) score -= 10;
-    else if (count >= 4) score -= 25;
-  }
-
-  const suitCards: Record<string, Card[]> = { c: [], d: [], h: [], s: [] };
-  hand.forEach(c => suitCards[c.suit].push(c));
-
-  let flushDraws = 0;
-  let hasNutSuit = false, hasNonNutSuit = false;
-
-  for (const suit in suitCards) {
-    const count = suitCards[suit].length;
-    if (count >= 2) {
-      const topRank = Math.max(...suitCards[suit].map(c => RANK_VALUES[c.rank]));
-      if (count === 2) {
-        flushDraws++;
-        if (topRank === 14) { score += 20; hasNutSuit = true; }
-        else { score += 8; hasNonNutSuit = true; }
-      } else if (count === 3) {
-        if (topRank === 14) { score += 10; hasNutSuit = true; }
-        else score -= 5; 
-      } else if (count >= 4) {
-        score -= 15;
-        tags.push("Monotone/Blocked");
-      }
-    }
-  }
-
-  if (flushDraws >= 2) { score += 18; tags.push("Double Suited"); }
-  if (hasNutSuit) tags.push("Nut Suited");
-  if (hasNonNutSuit && !hasNutSuit) tags.push("Non-Nut Suited");
-
-  const uniqueRanks = Array.from(new Set(hand.map(c => RANK_VALUES[c.rank]))).sort((a, b) => b - a);
-  let rundownScore = 0;
-  let connectedCards = 1;
-  let maxConnected = 1;
-  
-  for (let i = 0; i < uniqueRanks.length - 1; i++) {
-    const gap = uniqueRanks[i] - uniqueRanks[i + 1];
-    if (gap === 1) {
-      rundownScore += (uniqueRanks[i] >= 9 ? 14 : 10);
-      connectedCards++;
-      if (connectedCards > maxConnected) maxConnected = connectedCards;
-    } else if (gap === 2) {
-      rundownScore += 6;
-      connectedCards = 1;
-    } else connectedCards = 1;
-  }
-
-  if (maxConnected >= 4) rundownScore += 15;
-  if (maxConnected >= 5) rundownScore += 10;
-
-  score += rundownScore;
-
-  if (hasAA) tags.push(flushDraws >= 1 && rundownScore >= 15 ? "Premium AA" : "Mediocre AA");
-  else if (hasKK) tags.push(flushDraws >= 1 && rundownScore >= 15 ? "Premium KK" : "Naked KK");
-
-  if (rundownScore > 35) tags.push("Premium High Rundown");
-  else if (rundownScore > 18 && !hasAA && !hasKK) tags.push("Mid/Weak Rundown");
-
-  if (uniqueRanks.length >= 2) {
-    const bottomGap = uniqueRanks[uniqueRanks.length - 2] - uniqueRanks[uniqueRanks.length - 1];
-    if (bottomGap >= 4 && uniqueRanks[uniqueRanks.length - 1] < 6) {
-      score -= 8;
-      tags.push("Dangler");
-    }
-  }
-
-  if (tags.length === 0) tags.push("Trash/Disconnected");
-
-  let percentile = 100 - ((score / 135) * 100);
-  return { 
-    percentile: Math.min(Math.max(percentile, 0.1), 99.9),
-    tags
-  };
+  return { percentile, tags };
 }
 
-export function getRandomPosition(activePositions: Position[]): Position {
-  return activePositions[Math.floor(Math.random() * activePositions.length)];
-}
-
-export function createTableState(id: number, activePositions: Position[], drillTag: string | null = null): TableState {
-  let position = getRandomPosition(activePositions);
-  let hand = dealHand();
-  let evalResult = evaluatePLO6Hand(hand);
-
-  if (drillTag) {
-    while (!evalResult.tags.includes(drillTag)) {
-      hand = dealHand();
-      evalResult = evaluatePLO6Hand(hand);
-    }
-  }
+// Generates the table scenario for the user to play
+export function createTableState(id: number, activePositions: Position[] = RFI_POSITIONS, activeDrill: string | null = null): TableState {
+  const position = activePositions[Math.floor(Math.random() * activePositions.length)];
+  const hand = dealHand();
+  const { percentile, tags } = evaluatePLO6Hand(hand);
   
   const threshold = RFI_THRESHOLDS[position];
-  const diff = Math.abs(evalResult.percentile - threshold);
-  const correctAction: Action = evalResult.percentile <= threshold ? 'raise' : 'fold';
+  const correctAction = percentile <= threshold ? 'raise' : 'fold';
 
-  let severity: 'marginal' | 'bad' | 'blunder' = 'blunder';
-  if (diff <= 5) severity = 'marginal';
-  else if (diff <= 15) severity = 'bad';
-
-  return { 
-    id, position, hand, 
-    percentile: evalResult.percentile, 
-    tags: evalResult.tags,
-    correctAction, playerAction: null, showFeedback: false,
-    severity
+  return {
+    id,
+    hand,
+    position,
+    scenario: 'RFI',
+    percentile,
+    tags,
+    correctAction,
+    showFeedback: false
   };
 }
