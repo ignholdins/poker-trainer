@@ -12,6 +12,10 @@ import { Settings, BarChart3, History, Play, Layers, Target, TrendingUp, Award }
 
 type View = 'trainer' | 'drills' | 'analytics' | 'history' | 'settings';
 
+const BOT_NAMES = ['Gyciavas', 'GTO_Bot', 'Sharky', 'PLO_Master', 'WhaleWatcher', 'Viper', 'AcesHigh', 'RiverRat', 'Zenith', 'Lunar'];
+const getBotName = (i: number) => BOT_NAMES[i % BOT_NAMES.length];
+const getBotBalance = (i: number) => ((100 + (Math.sin(i) * 30)).toFixed(2));
+
 // ────────────────────────────────────────────────────────────────────────────
 // ROOT APP
 // ────────────────────────────────────────────────────────────────────────────
@@ -257,18 +261,20 @@ export default function PLO6Trainer() {
 // POKER TABLE
 // ────────────────────────────────────────────────────────────────────────────
 function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableState, isActive: boolean, isPaused: boolean, onDecision: (act: Action) => void }) {
+  const [betSize, setBetSize] = useState('3.0');
   const ACTION_ORDER = ['UTG', 'CO', 'BTN', 'SB', 'BB'];
   const heroActionIdx = ACTION_ORDER.indexOf(table.position);
   const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction;
 
   const CLOCKWISE = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
   const heroIdx = CLOCKWISE.indexOf(table.position);
+  const potSize = 1.5;
 
   const seats = [
-    { pos: CLOCKWISE[(heroIdx + 1) % 5], style: 'bottom-[12%] left-[8%]' },
-    { pos: CLOCKWISE[(heroIdx + 2) % 5], style: 'top-[8%] left-[18%]' },
-    { pos: CLOCKWISE[(heroIdx + 3) % 5], style: 'top-[8%] right-[18%]' },
-    { pos: CLOCKWISE[(heroIdx + 4) % 5], style: 'bottom-[12%] right-[8%]' },
+    { pos: CLOCKWISE[(heroIdx + 1) % 5], style: 'bottom-[12%] left-[8%]', name: getBotName(heroIdx+1) },
+    { pos: CLOCKWISE[(heroIdx + 2) % 5], style: 'top-[8%] left-[18%]', name: getBotName(heroIdx+2) },
+    { pos: CLOCKWISE[(heroIdx + 3) % 5], style: 'top-[8%] right-[18%]', name: getBotName(heroIdx+3) },
+    { pos: CLOCKWISE[(heroIdx + 4) % 5], style: 'bottom-[12%] right-[8%]', name: getBotName(heroIdx+4) },
   ];
 
   const isFolded = (pos: string) => ACTION_ORDER.indexOf(pos) < heroActionIdx;
@@ -279,7 +285,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
 
     if (isHeroBtn) {
       return (
-        <div className="absolute bottom-[28%] right-[38%] z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black bg-white border-2 border-slate-200 animate-in fade-in zoom-in duration-500">
+        <div className="absolute bottom-[28%] right-[38%] z-40 w-5 h-5 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.6)] font-black text-[9px] text-black bg-white border border-slate-300 animate-in fade-in zoom-in duration-500" style={{ backgroundImage: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)' }}>
           D
         </div>
       );
@@ -288,16 +294,14 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
     const btnSeat = seats.find(s => s.pos === btnPos);
     if (!btnSeat) return null;
 
-    // Relative offsets based on seat position to keep it inside the table but near the seat
     const isLeft = btnSeat.style.includes('left-');
     const isTop = btnSeat.style.includes('top-');
-    
-    const transform = `translate(${isLeft ? '40px' : '-40px'}, ${isTop ? '30px' : '-30px'})`;
+    const transform = `translate(${isLeft ? '35px' : '-35px'}, ${isTop ? '25px' : '-25px'})`;
 
     return (
       <div 
-        className={`absolute z-40 w-6 h-6 rounded-full flex items-center justify-center shadow-lg font-black text-[10px] text-black bg-white border-2 border-slate-200 transition-all duration-700 ${btnSeat.style}`}
-        style={{ transform }}
+        className={`absolute z-40 w-5 h-5 rounded-full flex items-center justify-center shadow-[0_2px_8px_rgba(0,0,0,0.6)] font-black text-[9px] text-black bg-white border border-slate-300 transition-all duration-700 ${btnSeat.style}`}
+        style={{ transform, backgroundImage: 'linear-gradient(135deg, #fff 0%, #e2e8f0 100%)' }}
       >
         D
       </div>
@@ -319,9 +323,11 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       <div className="flex flex-col items-center w-full max-w-[1100px] gap-2 sm:gap-4 relative pb-4 sm:pb-0">
 
       {/* ── TABLE FELT ── */}
-      <div className="relative w-full shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2.1 / 1', borderRadius: '50%', background: '#1d2a1e', border: '12px solid #1a1008', boxShadow: '0 0 0 2px #3d2808, 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.04)' }}>
+      <div className="relative w-full shadow-2xl overflow-hidden min-h-[160px] sm:min-h-[260px]" style={{ aspectRatio: '2.1 / 1', borderRadius: '50%', background: '#1d2a1e', border: '10px solid #1a1008', boxShadow: '0 0 0 1px #3d2808, 0 40px 100px rgba(0,0,0,0.9), inset 0 2px 0 rgba(255,255,255,0.04)' }}>
         {/* Green felt surface */}
         <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at 50% 40%, #226b34 0%, #154522 60%, #0a2b14 100%)' }} />
+        {/* Subtle felt texture */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '12px 12px' }} />
         {/* Inner rim highlight ring */}
         <div className="absolute" style={{ inset: '8px', borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
         
@@ -356,13 +362,13 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                   
                 {/* Name tag and Chip */}
                 <div className="flex items-center gap-1 mt-0.5">
-                  <div className="flex flex-col items-center px-1.5 py-0.5 rounded min-w-[40px] shadow-sm" style={{
-                    background: 'rgba(13,17,23,0.85)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                  <div className="flex flex-col items-center px-1.5 py-0.5 rounded min-w-[42px] shadow-sm" style={{
+                    background: 'rgba(13,17,23,0.9)',
+                    border: '1px solid rgba(255,255,255,0.12)',
                     backdropFilter: 'blur(4px)'
                   }}>
-                    <span className="text-[8px] font-black tracking-wider text-white/90">{(isSB || isBB) ? seat.pos : seat.pos}</span>
-                    {!folded && <span className="text-[7px] font-bold text-amber-400">25.00</span>}
+                    <span className="text-[7.5px] font-black tracking-tight text-white/95 uppercase truncate max-w-[40px]">{seat.name}</span>
+                    {!folded && <span className="text-[7px] font-bold text-amber-400/90">{getBotBalance(heroIdx+i+1)}</span>}
                   </div>
                   
                   {(isSB || isBB) && (
@@ -372,14 +378,21 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
                     </div>
                   )}
                 </div>
+
+                {/* Action Bubble */}
+                {folded && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-[8px] font-bold text-slate-400 uppercase animate-in fade-in slide-in-from-bottom-1">
+                    Fold
+                  </div>
+                )}
               </div>
             );
           })}
 
           {/* Pot indicator */}
-          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/40 border border-white/10 flex items-center gap-1.5 shadow-lg">
-            <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-            <span className="text-[10px] font-black text-white/80 uppercase tracking-widest">Pot: 1.5</span>
+          <div className="absolute top-[35%] left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 border border-white/10 flex items-center gap-2 shadow-xl backdrop-blur-md">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_8px_rgba(251,191,36,0.6)]" />
+            <span className="text-[10px] font-black text-white/90 uppercase tracking-[0.1em]">Pot: {potSize.toFixed(1)} BB</span>
           </div>
 
           {/* Feedback overlay */}
@@ -418,19 +431,19 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       </div>
 
       {/* ── HERO HAND ── */}
-      <div className="flex flex-col items-center gap-1.5 w-full -mt-3 sm:-mt-6">
-        <div className="flex justify-center items-end h-[85px] sm:h-[110px] w-full px-2 overflow-visible">
+      <div className="flex flex-col items-center gap-1 w-full -mt-2 sm:-mt-4">
+        <div className="flex justify-center items-end h-[80px] sm:h-[105px] w-full px-2 overflow-visible">
           {table.hand.map((c: CardType, i: number) => {
             const offset = i - 2.5;
-            const rotation = offset * 5;
-            const translateY = Math.abs(offset) * 5;
+            const rotation = offset * 4.5; // Tighter rotation
+            const translateY = Math.abs(offset) * 4; // Tighter curve
             return (
               <div
                 key={i}
-                className={`relative transition-all duration-300 hover:-translate-y-3 hover:z-50 ${i === 0 ? '' : '-ml-3 sm:-ml-5'}`}
+                className={`relative transition-all duration-300 hover:-translate-y-3 hover:z-50 ${i === 0 ? '' : '-ml-3.5 sm:-ml-6'}`}
                 style={{ transform: `rotate(${rotation}deg) translateY(${translateY}px)`, zIndex: i }}
               >
-                <div className="shadow-[0_6px_20px_rgba(0,0,0,0.55)] rounded-md overflow-hidden">
+                <div className="shadow-[0_4px_15px_rgba(0,0,0,0.55)] rounded-md overflow-hidden bg-black/20">
                   <PlayingCard card={c} revealed={true} />
                 </div>
               </div>
@@ -458,7 +471,11 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
           {['2X', '2.5X', '3X', 'POT'].map(size => (
             <button 
               key={size}
-              className="flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border border-white/10 transition-all hover:bg-white/5 active:scale-95"
+              onClick={() => {
+                const multi = parseFloat(size) || 3.5; // Pot=3.5 for simplified preflop
+                setBetSize((1.0 * multi).toFixed(1));
+              }}
+              className="flex-1 py-2 rounded-xl text-[10px] font-black tracking-widest border border-white/10 transition-all hover:bg-white/10 active:scale-95"
               style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.6)' }}
             >
               {size}
@@ -500,7 +517,7 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
               color: canAct ? '#000' : 'var(--text-muted)',
             }}
           >
-            Raise
+            Raise {betSize}
           </button>
         </div>
       </div>
