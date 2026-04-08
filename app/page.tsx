@@ -199,11 +199,18 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
       <div className="relative w-full aspect-[1.3/1] sm:aspect-[2.2/1] min-h-[300px] sm:min-h-[400px] rounded-[300px] p-2 bg-gradient-to-b from-zinc-800 to-zinc-950 shadow-2xl overflow-hidden border-zinc-700">
         <div className="relative w-full h-full rounded-[250px] flex items-center justify-center border-4 border-zinc-800/80 overflow-hidden" style={{ background: 'radial-gradient(ellipse at center, #0f766e 0%, #064e3b 100%)' }}>
           
-          <div className="absolute top-4 w-full text-center z-50">
-             <span className="text-[10px] font-bold text-zinc-300 bg-black/50 px-2 py-1 rounded">
-               DEBUG HUD | Hero: {table.position} | Folded: {foldedCount}
-             </span>
-          </div>
+          {/* Dealer Button */}
+          {table.position === 'BTN' ? (
+            <div className="absolute bottom-[28%] sm:bottom-[32%] right-[38%] z-40 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-zinc-400 flex items-center justify-center shadow-lg animate-in fade-in zoom-in duration-500">
+               <span className="text-[10px] sm:text-xs font-black text-black leading-none">D</span>
+            </div>
+          ) : (
+            opponentSeats.map((seat, i) => seat.pos === 'BTN' && (
+              <div key={`d-${i}`} className={`absolute ${seat.style} z-40 -translate-x-8 sm:-translate-x-12 translate-y-4 sm:translate-y-6 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white border border-zinc-400 flex items-center justify-center shadow-lg animate-in fade-in zoom-in duration-500`}>
+                 <span className="text-[10px] sm:text-xs font-black text-black leading-none">D</span>
+              </div>
+            ))
+          )}
 
           {(table.position === 'SB' || table.position === 'BB') && <div className="absolute bottom-[10%] sm:bottom-[12%] left-1/2 -translate-x-1/2 z-20">{renderChip(table.position === 'SB' ? '0.5' : '1')}</div>}
           
@@ -250,10 +257,10 @@ function PokerTable({ table, isActive, isPaused, onDecision }: { table: TableSta
         </div>
       </div>
 
-      <div className="relative z-30 -mt-8 sm:-mt-16 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
+      <div className="relative z-30 -mt-6 sm:-mt-12 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
         <div className="flex justify-center items-end h-[120px] w-full">
           {table.hand.map((c: CardType, i: number) => (
-             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*6}deg)`, zIndex: i, marginLeft: i===0?0:'-1rem' }}>
+             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*4}deg)`, zIndex: i, marginLeft: i===0?0:'-1.5rem' }}>
                 <PlayingCard card={c} revealed={true} />
              </div>
           ))}
