@@ -127,10 +127,31 @@ export default function PLO6Trainer() {
 // POKER TABLE COMPONENT (The Engine)
 // ═══════════════════════════════════════════════════════════
 function PokerTable({ table, isActive, isPaused, onDecision }: any) {
-  const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction;
-  
   const ACTION_ORDER = ['UTG', 'CO', 'BTN', 'SB', 'BB'];
   const heroActionIdx = ACTION_ORDER.indexOf(table.position);
+
+  const [currentActorIdx, setCurrentActorIdx] = useState(0);
+
+  useEffect(() => {
+    setCurrentActorIdx(0);
+  }, [table.id]);
+
+  useEffect(() => {
+    const safeScenario = table.scenario || 'RFI';
+    if (safeScenario === 'RFI') {
+      if (currentActorIdx < heroActionIdx && !isPaused && !table.playerAction) {
+        const timer = setTimeout(() => {
+          setCurrentActorIdx(prev => prev + 1);
+        }, 700);
+        return () => clearTimeout(timer);
+      }
+    } else {
+      setCurrentActorIdx(heroActionIdx);
+    }
+  }, [currentActorIdx, heroActionIdx, isPaused, table.scenario, table.playerAction]);
+
+  const isHeroTurn = currentActorIdx === heroActionIdx;
+  const canAct = isActive && !isPaused && !table.showFeedback && !table.playerAction && isHeroTurn;
 
   const CLOCKWISE_POSITIONS = ['SB', 'BB', 'UTG', 'CO', 'BTN'];
   const heroIdx = CLOCKWISE_POSITIONS.indexOf(table.position);
@@ -147,9 +168,14 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
     const safeScenario = table.scenario || 'RFI';
     if (safeScenario === 'RFI') {
       const posIdx = ACTION_ORDER.indexOf(pos);
-      return posIdx < heroActionIdx;
+      return posIdx < currentActorIdx;
     }
     return false;
+  };
+
+  const isThinking = (pos: string) => {
+    const posIdx = ACTION_ORDER.indexOf(pos);
+    return posIdx === currentActorIdx && !table.playerAction && posIdx <= heroActionIdx;
   };
 
   const foldedCount = opponentSeats.filter(s => isFolded(s.pos)).length;
@@ -177,19 +203,18 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
           {opponentSeats.map((seat, i) => {
             const isRaiser = table.raiserPosition === seat.pos;
             const folded = isFolded(seat.pos);
+            const thinking = isThinking(seat.pos);
             
             return (
               <div key={i} className={`absolute ${seat.style} z-10 flex flex-col items-center transition-all duration-500`}>
                 {isRaiser && <div className={`absolute ${seat.chipStyle}`}>{renderChip('3.5')}</div>}
                 {!isRaiser && !folded && (seat.pos === 'SB' || seat.pos === 'BB') && <div className={`absolute ${seat.chipStyle}`}>{renderChip(seat.pos === 'SB' ? '0.5' : '1')}</div>}
                 
-                {!folded && (
-                  <div className="flex -mb-2 sm:-mb-4 opacity-80 scale-50 sm:scale-75 animate-in slide-in-from-top-4 duration-500">
-                    {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
-                  </div>
-                )}
+                <div className={`flex -mb-2 sm:-mb-4 transition-all duration-500 origin-center ${folded ? 'opacity-0 scale-0' : 'opacity-80 scale-50 sm:scale-75'} ${thinking ? '-translate-y-2' : ''}`}>
+                  {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
+                </div>
                 
-                <div className={`relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 py-0.5 text-center shadow-xl z-20 ${isRaiser ? 'ring-2 ring-red-500' : ''} ${folded ? 'opacity-20' : 'opacity-100'}`}>
+                <div className={`relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 py-0.5 text-center shadow-xl z-20 transition-all duration-300 ${thinking ? 'ring-2 ring-yellow-400' : ''} ${isRaiser ? 'ring-2 ring-red-500' : ''} ${folded ? 'opacity-20' : 'opacity-100'}`}>
                   <span className="text-[9px] font-medium text-zinc-100">{seat.pos} {folded ? '(Folded)' : ''}</span>
                 </div>
               </div>
@@ -209,12 +234,12 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
       <div className="relative z-30 -mt-8 sm:-mt-16 flex flex-col items-center w-full scale-[0.85] sm:scale-100 origin-top">
         <div className="flex justify-center items-end h-[120px] w-full">
           {table.hand.map((c: any, i: any) => (
-             <div key={i} className="relative shadow-2xl origin-bottom" style={{ transform: `rotate(${(i-2.5)*6}deg)`, zIndex: i, marginLeft: i===0?0:'-1rem' }}>
+             <div key={i} className="relative shadow-2xl origin-bottom transition-all duration-300" style={{ transform: `rotate(${(i-2.5)*6}deg)`, zIndex: i, marginLeft: i===0?0:'-1rem' }}>
                 <PlayingCard card={c} index={i} revealed={true} />
              </div>
           ))}
         </div>
-        <div className="relative z-40 mt-[-5px] bg-zinc-900 border-t border-zinc-600 rounded-md px-6 py-1 shadow-2xl text-center">
+        <div className={`relative z-40 mt-[-5px] bg-zinc-900 border-t border-zinc-600 rounded-md px-6 py-1 shadow-2xl text-center transition-all duration-300 ${isHeroTurn && !table.playerAction ? 'ring-2 ring-yellow-400 bg-zinc-800' : ''}`}>
             <span className="text-zinc-200 text-xs font-medium block">{table.position}</span>
         </div>
       </div>
