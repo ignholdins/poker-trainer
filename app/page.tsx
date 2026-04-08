@@ -66,7 +66,7 @@ export default function PLO6Trainer() {
       try {
         const { error } = await supabase.from('hand_history').insert([{
           user_id: getUserId(), position: result.position, scenario: result.scenario || 'RFI',
-          hand: result.hand, percentile: result.percentile, tags: result.tags,
+          hand: result.hand,
           correct_action: result.correctAction, player_action: result.playerAction, is_correct: result.isCorrect
         }]);
         if (error) console.error('Failed to save hand history:', error);
@@ -332,21 +332,23 @@ function HistoryView({ history }: { history: HandResult[] }) {
           <div className="flex items-center gap-3">
             <PositionBadge position={hand.position} />
             <div className="flex gap-0.5 sm:gap-1">
-              {hand.hand.map((c, idx) => <InlineCard key={idx} card={c} />)}
+              {(Array.isArray(hand.hand) ? hand.hand : []).map((c, idx) => <InlineCard key={idx} card={c} />)}
             </div>
           </div>
           
           <div className="flex items-center justify-between xl:justify-end gap-4 w-full xl:w-auto overflow-hidden">
             <div className="flex flex-col min-w-[60px]">
               <span className="text-[9px] text-zinc-500 uppercase font-bold">Grade</span>
-              <span className="text-xs font-mono font-bold text-zinc-300">{hand.percentile?.toFixed(1)}%</span>
+              <span className="text-xs font-mono font-bold text-zinc-300">
+                {hand.percentile !== undefined && hand.percentile !== null ? `${hand.percentile.toFixed(1)}%` : 'N/A'}
+              </span>
             </div>
 
             <div className="flex flex-col min-w-[80px]">
               <span className="text-[9px] text-zinc-500 uppercase font-bold">Action</span>
               <div className="flex items-center gap-1.5">
                 <span className={`text-xs font-bold uppercase ${hand.isCorrect ? 'text-green-500' : 'text-red-500'}`}>{hand.playerAction}</span>
-                {!hand.isCorrect && (
+                {!hand.isCorrect && hand.correctAction && (
                   <>
                     <span className="text-[10px] text-zinc-500">→</span>
                     <span className="text-xs font-bold uppercase text-zinc-300">{hand.correctAction}</span>
@@ -356,7 +358,11 @@ function HistoryView({ history }: { history: HandResult[] }) {
             </div>
 
             <div className="hidden sm:flex flex-wrap gap-1 max-w-[150px] justify-end">
-              {hand.tags?.map(tag => <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300 whitespace-nowrap">{tag}</span>)}
+              {hand.tags && hand.tags.length > 0 ? (
+                hand.tags.map(tag => <span key={tag} className="text-[9px] px-1.5 py-0.5 bg-zinc-800 rounded text-zinc-300 whitespace-nowrap">{tag}</span>)
+              ) : (
+                <span className="text-[9px] text-zinc-600">Old Engine</span>
+              )}
             </div>
           </div>
         </div>
