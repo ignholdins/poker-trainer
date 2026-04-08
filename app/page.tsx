@@ -47,7 +47,7 @@ export default function PLO6Trainer() {
     
     const isCorrect = action === table.correctAction;
     const result: HandResult = {
-      hand: [...table.hand], position: table.position, scenario: table.scenario,
+      hand: [...table.hand], position: table.position, scenario: table.scenario || 'RFI',
       percentile: table.percentile!, tags: table.tags,
       correctAction: table.correctAction, playerAction: action,
       isCorrect, timestamp: Date.now()
@@ -61,7 +61,7 @@ export default function PLO6Trainer() {
 
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       await supabase.from('hand_history').insert([{
-        user_id: getUserId(), position: result.position, scenario: result.scenario,
+        user_id: getUserId(), position: result.position, scenario: result.scenario || 'RFI',
         hand: result.hand, percentile: result.percentile, tags: result.tags,
         correct_action: result.correctAction, player_action: result.playerAction, is_correct: result.isCorrect
       }]);
@@ -79,7 +79,7 @@ export default function PLO6Trainer() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 bg-zinc-900 z-50">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-green-500/15 flex items-center justify-center"><Layers className="w-4 h-4 text-green-500" /></div>
-          <h1 className="text-base font-bold text-white">PLO6 <span className="text-green-500">Trainer</span></h1>
+          <h1 className="text-base font-bold text-white">PLO6 <span className="text-green-500">Trainer v2</span></h1>
         </div>
         <nav className="flex items-center gap-1">
           {([{ v: 'trainer', icon: Play }, { v: 'analytics', icon: BarChart3 }, { v: 'history', icon: History }, { v: 'settings', icon: Settings }]).map(({ v, icon: Icon }) => (
@@ -138,11 +138,14 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
     { pos: CLOCKWISE_POSITIONS[(heroIdx + 4) % 5], style: "bottom-[12%] sm:bottom-[20%] right-[2%]", chipStyle: "-top-6 sm:-top-8 left-1/2 -translate-x-1/2" },
   ];
 
-  // Helper to determine if a position has logically folded
+  // BULLETPROOF FOLD LOGIC
   const isFolded = (pos: string) => {
-    if (table.scenario === 'RFI') {
+    // If the database has an old entry with no scenario, we force it to assume 'RFI'
+    const safeScenario = table.scenario || 'RFI';
+    
+    if (safeScenario === 'RFI') {
       const posIdx = ACTION_ORDER.indexOf(pos);
-      // In RFI, anyone acting BEFORE Hero has already folded
+      // Anyone who comes BEFORE the Hero in the ACTION_ORDER has logically folded.
       return posIdx < heroActionIdx;
     }
     return false;
@@ -171,16 +174,16 @@ function PokerTable({ table, isActive, isPaused, onDecision }: any) {
                 {isRaiser && <div className={`absolute ${seat.chipStyle}`}>{renderChip('3.5')}</div>}
                 {!isRaiser && !folded && (seat.pos === 'SB' || seat.pos === 'BB') && <div className={`absolute ${seat.chipStyle}`}>{renderChip(seat.pos === 'SB' ? '0.5' : '1')}</div>}
                 
-                {/* Only render cards if the player has NOT folded */}
+                {/* STRICT RENDER BLOCK: Only show cards if folded is mathematically FALSE */}
                 {!folded && (
                   <div className="flex -mb-2 sm:-mb-4 opacity-80 scale-50 sm:scale-75 animate-in slide-in-from-top-4 duration-500">
                     {[1,2,3,4,5,6].map(n => <div key={n} className="w-8 h-12 bg-red-800 border border-red-950 rounded-sm -ml-3 shadow-md rotate-[-5deg]" />)}
                   </div>
                 )}
                 
-                {/* Dim the nameplate if the player has folded */}
-                <div className={`relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 py-0.5 text-center shadow-xl z-20 ${isRaiser ? 'ring-2 ring-red-500' : ''} ${folded ? 'opacity-40' : 'opacity-100'}`}>
-                  <span className="text-[9px] font-medium text-zinc-100">{seat.pos}</span>
+                {/* Dim the nameplate completely if the player has folded */}
+                <div className={`relative bg-zinc-900 border-t-2 border-zinc-600 rounded-md px-3 py-0.5 text-center shadow-xl z-20 ${isRaiser ? 'ring-2 ring-red-500' : ''} ${folded ? 'opacity-20' : 'opacity-100'}`}>
+                  <span className="text-[9px] font-medium text-zinc-100">{seat.pos} {folded ? '(Folded)' : ''}</span>
                 </div>
               </div>
             );
