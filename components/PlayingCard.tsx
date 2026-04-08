@@ -33,7 +33,7 @@ export function PlayingCard({ card, compact = false, revealed = true }: { card: 
       </div>
 
       {/* Center Large Suit - SOLID COLOR, BOLD */}
-      <div className={`${centerSize} opacity-15 select-none`}>
+      <div className={`${centerSize} select-none`}>
         {suitSymbols[card.suit]}
       </div>
 
@@ -47,10 +47,15 @@ export function PlayingCard({ card, compact = false, revealed = true }: { card: 
 }
 
 export function InlineCard({ card }: { card: CardType }) {
-  const suitColors = { s: 'text-slate-900', h: 'text-red-600', d: 'text-blue-600', c: 'text-green-600' };
+  const suitColors = { 
+    s: 'text-black', 
+    h: 'text-[#e11d48]', 
+    d: 'text-[#2563eb]', 
+    c: 'text-[#059669]' 
+  };
   const suitSymbols = { s: '♠', h: '♥', d: '♦', c: '♣' };
   return (
-    <span className={`inline-flex items-center justify-center px-1 py-0.5 bg-white border rounded font-bold ${suitColors[card.suit]} text-[10px] sm:text-xs lg:text-sm w-6 sm:w-7 lg:w-9`}>
+    <span className={`inline-flex items-center justify-center px-1 py-0.5 bg-white border border-slate-200 shadow-sm rounded font-black ${suitColors[card.suit]} text-[10px] sm:text-xs lg:text-sm w-6 sm:w-7 lg:w-9`}>
       {card.rank}{suitSymbols[card.suit]}
     </span>
   );
